@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 // Schedule/assign a care shift (creates uncompleted entry)
 export const schedule = mutation({
@@ -9,6 +10,7 @@ export const schedule = mutation({
     assignedUserName: v.string(),
     type: v.union(v.literal("am"), v.literal("pm")),
     date: v.number(), // Start of day timestamp
+    actingUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     // Check if there's already an entry for this date/type
@@ -26,11 +28,23 @@ export const schedule = mutation({
         assignedUserId: args.assignedUserId,
         assignedUserName: args.assignedUserName,
       });
+
+      if (args.actingUserId) {
+        const household = await ctx.db.get(args.householdId);
+        const shiftLabel = args.type === "am" ? "Morning" : "Evening";
+        await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
+          householdId: args.householdId,
+          excludeUserId: args.actingUserId,
+          title: "Shift Assigned",
+          body: `${args.assignedUserName} will handle ${household?.dogName ?? "the dog"}'s ${shiftLabel.toLowerCase()} shift.`,
+        });
+      }
+
       return existing._id;
     }
 
     // Create new scheduled shift
-    return await ctx.db.insert("careShifts", {
+    const id = await ctx.db.insert("careShifts", {
       householdId: args.householdId,
       type: args.type,
       date: args.date,
@@ -38,6 +52,19 @@ export const schedule = mutation({
       assignedUserName: args.assignedUserName,
       completed: false,
     });
+
+    if (args.actingUserId) {
+      const household = await ctx.db.get(args.householdId);
+      const shiftLabel = args.type === "am" ? "Morning" : "Evening";
+      await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
+        householdId: args.householdId,
+        excludeUserId: args.actingUserId,
+        title: "Shift Assigned",
+        body: `${args.assignedUserName} will handle ${household?.dogName ?? "the dog"}'s ${shiftLabel.toLowerCase()} shift.`,
+      });
+    }
+
+    return id;
   },
 });
 
@@ -50,6 +77,7 @@ export const complete = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const shift = await ctx.db.get(args.shiftId);
     await ctx.db.patch(args.shiftId, {
       completed: true,
       completedAt: Date.now(),
@@ -57,6 +85,17 @@ export const complete = mutation({
       completedByUserName: args.completedByUserName,
       notes: args.notes,
     });
+
+    if (shift) {
+      const household = await ctx.db.get(shift.householdId);
+      const shiftLabel = shift.type === "am" ? "Morning" : "Evening";
+      await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
+        householdId: shift.householdId,
+        excludeUserId: args.completedByUserId,
+        title: `${shiftLabel} shift done!`,
+        body: `${args.completedByUserName} completed ${household?.dogName ?? "the dog"}'s ${shiftLabel.toLowerCase()} walk and meal.`,
+      });
+    }
   },
 });
 
@@ -99,6 +138,8 @@ export const logNow = mutation({
       .filter((q) => q.eq(q.field("type"), args.type))
       .first();
 
+    let resultId;
+
     if (existing) {
       // Complete the existing entry
       await ctx.db.patch(existing._id, {
@@ -108,22 +149,33 @@ export const logNow = mutation({
         completedByUserName: args.userName,
         notes: args.notes,
       });
-      return existing._id;
+      resultId = existing._id;
+    } else {
+      // Create new completed shift (user is both assigned and completer)
+      resultId = await ctx.db.insert("careShifts", {
+        householdId: args.householdId,
+        type: args.type,
+        date: dateTimestamp,
+        assignedUserId: args.userId,
+        assignedUserName: args.userName,
+        completed: true,
+        completedAt: Date.now(),
+        completedByUserId: args.userId,
+        completedByUserName: args.userName,
+        notes: args.notes,
+      });
     }
 
-    // Create new completed shift (user is both assigned and completer)
-    return await ctx.db.insert("careShifts", {
+    const household = await ctx.db.get(args.householdId);
+    const shiftLabel = args.type === "am" ? "Morning" : "Evening";
+    await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
       householdId: args.householdId,
-      type: args.type,
-      date: dateTimestamp,
-      assignedUserId: args.userId,
-      assignedUserName: args.userName,
-      completed: true,
-      completedAt: Date.now(),
-      completedByUserId: args.userId,
-      completedByUserName: args.userName,
-      notes: args.notes,
+      excludeUserId: args.userId,
+      title: `${shiftLabel} shift done!`,
+      body: `${args.userName} completed ${household?.dogName ?? "the dog"}'s ${shiftLabel.toLowerCase()} walk and meal.`,
     });
+
+    return resultId;
   },
 });
 

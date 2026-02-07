@@ -11,6 +11,7 @@
 import type * as appointments from "../appointments.js";
 import type * as careShifts from "../careShifts.js";
 import type * as households from "../households.js";
+import type * as notifications from "../notifications.js";
 import type * as repeatingEvents from "../repeatingEvents.js";
 import type * as users from "../users.js";
 
@@ -24,6 +25,7 @@ declare const fullApi: ApiFromModules<{
   appointments: typeof appointments;
   careShifts: typeof careShifts;
   households: typeof households;
+  notifications: typeof notifications;
   repeatingEvents: typeof repeatingEvents;
   users: typeof users;
 }>;

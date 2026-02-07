@@ -16,8 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useAuth } from '../../context/AuthContext';
-import { useNotifications } from '../../context/NotificationContext';
-import { colors, spacing, borderRadius, shadows } from '../../lib/theme';
+import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
 import { Id } from '../../convex/_generated/dataModel';
 
 // Interval options for recurring events
@@ -29,8 +28,7 @@ const INTERVAL_OPTIONS = [
 ];
 
 export default function VetScreen() {
-  const { household } = useAuth();
-  const { onAppointmentScheduled, onAppointmentCompleted, onRecurringEventCompleted } = useNotifications();
+  const { user, household } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddRecurringModal, setShowAddRecurringModal] = useState(false);
@@ -90,10 +88,8 @@ export default function VetScreen() {
         date: selectedDate.getTime(),
         location: location.trim() || undefined,
         notes: notes.trim() || undefined,
+        actingUserId: user?._id,
       });
-
-      // Send notification for appointment scheduled
-      await onAppointmentScheduled(title.trim(), selectedDate);
 
       resetAppointmentForm();
       setShowAddModal(false);
@@ -110,8 +106,7 @@ export default function VetScreen() {
       {
         text: 'Complete',
         onPress: async () => {
-          await markComplete({ appointmentId });
-          await onAppointmentCompleted(appointmentTitle, appointmentId);
+          await markComplete({ appointmentId, actingUserId: user?._id });
         },
       },
     ]);
@@ -156,9 +151,8 @@ export default function VetScreen() {
     }
   };
 
-  const handleMarkEventDone = async (eventId: Id<'repeatingEvents'>, eventTitle: string, intervalDays: number) => {
-    await markEventDone({ eventId });
-    await onRecurringEventCompleted(eventTitle, intervalDays);
+  const handleMarkEventDone = async (eventId: Id<'repeatingEvents'>) => {
+    await markEventDone({ eventId, actingUserId: user?._id });
   };
 
   const handleDeleteRecurringEvent = (eventId: Id<'repeatingEvents'>) => {
@@ -229,7 +223,7 @@ export default function VetScreen() {
 
   const getDueStatusColor = (daysUntilDue: number) => {
     if (daysUntilDue <= 0) return colors.status.warning;
-    if (daysUntilDue <= 3) return colors.primary[500];
+    if (daysUntilDue <= 3) return colors.accent.warm;
     return colors.text.muted;
   };
 
@@ -248,7 +242,7 @@ export default function VetScreen() {
   if (!household) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary[500]} />
+        <ActivityIndicator size="large" color={colors.text.primary} />
       </View>
     );
   }
@@ -263,7 +257,7 @@ export default function VetScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.primary[500]}
+            tintColor={colors.text.primary}
           />
         }
       >
@@ -275,32 +269,30 @@ export default function VetScreen() {
             onPress={() => setShowAddModal(true)}
             activeOpacity={0.8}
           >
-            <Ionicons name="add" size={24} color={colors.text.inverse} />
+            <Ionicons name="add" size={22} color={colors.text.inverse} />
           </TouchableOpacity>
         </View>
 
         {/* Recurring Care Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recurring Care</Text>
+            <Text style={styles.sectionTitle}>RECURRING CARE</Text>
             <TouchableOpacity
               style={styles.addSmallButton}
               onPress={() => setShowAddRecurringModal(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name="add" size={18} color={colors.primary[600]} />
+              <Ionicons name="add" size={16} color={colors.text.primary} />
             </TouchableOpacity>
           </View>
 
           {isRecurringLoading ? (
             <View style={styles.sectionLoadingContainer}>
-              <ActivityIndicator size="small" color={colors.primary[400]} />
+              <ActivityIndicator size="small" color={colors.text.muted} />
             </View>
           ) : !repeatingEvents || repeatingEvents.length === 0 ? (
             <View style={styles.recurringEmptyCard}>
-              <View style={styles.recurringEmptyIcon}>
-                <Ionicons name="repeat" size={28} color={colors.text.muted} />
-              </View>
+              <Ionicons name="repeat" size={20} color={colors.text.muted} />
               <View style={styles.recurringEmptyText}>
                 <Text style={styles.recurringEmptyTitle}>No recurring care set up</Text>
                 <Text style={styles.recurringEmptySubtext}>
@@ -310,7 +302,7 @@ export default function VetScreen() {
             </View>
           ) : (
             <View style={styles.recurringList}>
-              {repeatingEvents.map((event) => {
+              {repeatingEvents.map((event, index) => {
                 const statusColor = getDueStatusColor(event.daysUntilDue);
                 const isDueOrOverdue = event.daysUntilDue <= 0;
 
@@ -318,39 +310,18 @@ export default function VetScreen() {
                   <View
                     key={event._id}
                     style={[
-                      styles.recurringCard,
-                      isDueOrOverdue && styles.recurringCardDue,
+                      styles.recurringRow,
+                      index < repeatingEvents.length - 1 && styles.recurringRowBorder,
                     ]}
                   >
-                    <View style={styles.recurringCardContent}>
-                      <View style={styles.recurringCardHeader}>
-                        <View style={[
-                          styles.recurringIcon,
-                          isDueOrOverdue && styles.recurringIconDue,
-                        ]}>
-                          <Ionicons
-                            name={isDueOrOverdue ? 'alert' : 'repeat'}
-                            size={18}
-                            color={isDueOrOverdue ? colors.status.warning : colors.primary[600]}
-                          />
-                        </View>
-                        <View style={styles.recurringInfo}>
-                          <Text style={styles.recurringTitle}>{event.title}</Text>
-                          <Text style={[styles.recurringDue, { color: statusColor }]}>
-                            {getDueStatusText(event.daysUntilDue)}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.recurringMeta}>
-                        <Text style={styles.recurringInterval}>
-                          Every {event.intervalDays} days
-                        </Text>
-                        {event.notes && (
-                          <Text style={styles.recurringNotes} numberOfLines={1}>
-                            {event.notes}
-                          </Text>
-                        )}
-                      </View>
+                    <View style={styles.recurringContent}>
+                      <Text style={styles.recurringTitle}>{event.title}</Text>
+                      <Text style={[styles.recurringDue, { color: statusColor }]}>
+                        {getDueStatusText(event.daysUntilDue)}
+                      </Text>
+                      <Text style={styles.recurringInterval}>
+                        Every {event.intervalDays} days
+                      </Text>
                     </View>
                     <View style={styles.recurringActions}>
                       <TouchableOpacity
@@ -358,13 +329,13 @@ export default function VetScreen() {
                           styles.markDoneButton,
                           isDueOrOverdue && styles.markDoneButtonDue,
                         ]}
-                        onPress={() => handleMarkEventDone(event._id, event.title, event.intervalDays)}
+                        onPress={() => handleMarkEventDone(event._id)}
                         activeOpacity={0.7}
                       >
                         <Ionicons
                           name="checkmark"
-                          size={20}
-                          color={isDueOrOverdue ? colors.text.inverse : colors.primary[600]}
+                          size={18}
+                          color={isDueOrOverdue ? colors.text.inverse : colors.text.primary}
                         />
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -372,7 +343,7 @@ export default function VetScreen() {
                         onPress={() => handleDeleteRecurringEvent(event._id)}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="trash-outline" size={18} color={colors.text.muted} />
+                        <Ionicons name="trash-outline" size={16} color={colors.text.muted} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -384,26 +355,25 @@ export default function VetScreen() {
 
         {/* Upcoming Appointments */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Vet Visits</Text>
+          <Text style={styles.sectionTitle}>VET VISITS</Text>
 
           {isAppointmentsLoading ? (
             <View style={styles.sectionLoadingContainer}>
-              <ActivityIndicator size="small" color={colors.primary[400]} />
+              <ActivityIndicator size="small" color={colors.text.muted} />
             </View>
           ) : !upcomingAppointments || upcomingAppointments.length === 0 ? (
             <View style={styles.emptyCard}>
-              <Ionicons name="calendar-outline" size={48} color={colors.text.muted} />
+              <Ionicons name="calendar-outline" size={36} color={colors.text.muted} />
               <Text style={styles.emptyText}>No upcoming appointments</Text>
               <Text style={styles.emptySubtext}>
-                {household.dogName} is all caught up!
+                {household.dogName} is all caught up
               </Text>
               <TouchableOpacity
                 style={styles.emptyButton}
                 onPress={() => setShowAddModal(true)}
                 activeOpacity={0.8}
               >
-                <Ionicons name="add" size={18} color={colors.primary[600]} />
-                <Text style={styles.emptyButtonText}>Schedule Visit</Text>
+                <Text style={styles.emptyButtonText}>SCHEDULE VISIT</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -434,7 +404,7 @@ export default function VetScreen() {
                   </Text>
                   {appointment.location && (
                     <View style={styles.appointmentLocation}>
-                      <Ionicons name="location-outline" size={14} color={colors.text.muted} />
+                      <Ionicons name="location-outline" size={13} color={colors.text.muted} />
                       <Text style={styles.appointmentLocationText}>{appointment.location}</Text>
                     </View>
                   )}
@@ -446,7 +416,7 @@ export default function VetScreen() {
                 </View>
 
                 <View style={styles.appointmentAction}>
-                  <Ionicons name="checkmark-circle-outline" size={24} color={colors.text.muted} />
+                  <Ionicons name="checkmark-circle-outline" size={22} color={colors.text.muted} />
                 </View>
               </TouchableOpacity>
             ))
@@ -461,12 +431,12 @@ export default function VetScreen() {
               onPress={() => setShowPast(!showPast)}
               activeOpacity={0.8}
             >
-              <Text style={styles.sectionTitle}>Past Visits</Text>
+              <Text style={styles.sectionTitle}>PAST VISITS</Text>
               <View style={styles.pastToggle}>
                 <Text style={styles.pastCount}>{pastAppointments.length}</Text>
                 <Ionicons
                   name={showPast ? 'chevron-up' : 'chevron-down'}
-                  size={20}
+                  size={18}
                   color={colors.text.secondary}
                 />
               </View>
@@ -475,18 +445,11 @@ export default function VetScreen() {
             {showPast && (
               <View style={styles.pastList}>
                 {pastAppointments.map((appointment) => (
-                  <View key={appointment._id} style={styles.pastCard}>
-                    <View style={styles.pastIcon}>
-                      <Ionicons name="checkmark" size={16} color={colors.status.success} />
-                    </View>
+                  <View key={appointment._id} style={styles.pastRow}>
+                    <Ionicons name="checkmark" size={16} color={colors.status.success} />
                     <View style={styles.pastContent}>
                       <Text style={styles.pastTitle}>{appointment.title}</Text>
                       <Text style={styles.pastDate}>{formatShortDate(appointment.date)}</Text>
-                      {appointment.notes && (
-                        <Text style={styles.pastNotes} numberOfLines={1}>
-                          {appointment.notes}
-                        </Text>
-                      )}
                     </View>
                   </View>
                 ))}
@@ -495,16 +458,10 @@ export default function VetScreen() {
           </View>
         )}
 
-        {/* Helpful Info */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoHeader}>
-            <Ionicons name="information-circle" size={20} color={colors.primary[600]} />
-            <Text style={styles.infoTitle}>Tip</Text>
-          </View>
-          <Text style={styles.infoText}>
-            Long press on any appointment to delete it. Tap to mark as completed.
-          </Text>
-        </View>
+        {/* Tip — minimal */}
+        <Text style={styles.tipText}>
+          Long press to delete. Tap to complete.
+        </Text>
       </ScrollView>
 
       {/* Add Appointment Modal */}
@@ -537,7 +494,7 @@ export default function VetScreen() {
 
           <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Appointment Title *</Text>
+              <Text style={styles.inputLabel}>APPOINTMENT TITLE</Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g., Annual Checkup"
@@ -548,7 +505,7 @@ export default function VetScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>When</Text>
+              <Text style={styles.inputLabel}>WHEN</Text>
               <View style={styles.quickDates}>
                 <TouchableOpacity
                   style={styles.quickDateButton}
@@ -574,7 +531,7 @@ export default function VetScreen() {
               </View>
 
               <View style={styles.selectedDateDisplay}>
-                <Ionicons name="calendar" size={18} color={colors.primary[600]} />
+                <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
                 <Text style={styles.selectedDateText}>
                   {formatDate(selectedDate.getTime())} at {formatTime(selectedDate.getTime())}
                 </Text>
@@ -582,7 +539,7 @@ export default function VetScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Location (optional)</Text>
+              <Text style={styles.inputLabel}>LOCATION (OPTIONAL)</Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g., Happy Paws Vet Clinic"
@@ -593,7 +550,7 @@ export default function VetScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Notes (optional)</Text>
+              <Text style={styles.inputLabel}>NOTES (OPTIONAL)</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="Any additional notes..."
@@ -639,7 +596,7 @@ export default function VetScreen() {
 
           <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>What needs to be done? *</Text>
+              <Text style={styles.inputLabel}>WHAT NEEDS TO BE DONE?</Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g., Flea Medicine, Heartworm Pill"
@@ -650,7 +607,7 @@ export default function VetScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>How often?</Text>
+              <Text style={styles.inputLabel}>HOW OFTEN?</Text>
               <View style={styles.intervalOptions}>
                 {INTERVAL_OPTIONS.map((option) => (
                   <TouchableOpacity
@@ -676,7 +633,7 @@ export default function VetScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Notes (optional)</Text>
+              <Text style={styles.inputLabel}>NOTES (OPTIONAL)</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="Any additional notes..."
@@ -691,7 +648,7 @@ export default function VetScreen() {
 
             {/* Quick Add Suggestions */}
             <View style={styles.suggestionsSection}>
-              <Text style={styles.suggestionsTitle}>Quick Add</Text>
+              <Text style={styles.suggestionsTitle}>QUICK ADD</Text>
               <View style={styles.suggestions}>
                 {[
                   { title: 'Flea Medicine', interval: 30 },
@@ -731,19 +688,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.background.primary,
   },
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: 15,
-    color: colors.text.secondary,
-  },
   sectionLoadingContainer: {
-    height: 100,
-    backgroundColor: colors.background.card,
-    borderRadius: borderRadius.lg,
+    height: 80,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.border.light,
   },
   scrollView: {
     flex: 1,
@@ -761,19 +709,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
+    ...typography.displayMedium,
     color: colors.text.primary,
-    letterSpacing: -0.5,
   },
   addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary[500],
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.text.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.md,
   },
 
   // Section
@@ -787,116 +732,72 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text.primary,
+    ...typography.label,
+    color: colors.text.secondary,
     marginBottom: spacing.md,
   },
   addSmallButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primary[50],
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: hairline,
+    borderColor: colors.border.medium,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
 
-  // Recurring Care
+  // Recurring Care — row separators instead of boxed cards
   recurringEmptyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background.card,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    borderWidth: 1.5,
-    borderColor: colors.border.light,
-    borderStyle: 'dashed',
-  },
-  recurringEmptyIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.background.muted,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
+    gap: spacing.md,
+    paddingVertical: spacing.lg,
+    borderTopWidth: hairline,
+    borderTopColor: colors.border.light,
+    borderBottomWidth: hairline,
+    borderBottomColor: colors.border.light,
   },
   recurringEmptyText: {
     flex: 1,
   },
   recurringEmptyTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '500',
     color: colors.text.secondary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   recurringEmptySubtext: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.text.muted,
   },
-  recurringList: {
-    gap: spacing.sm,
-  },
-  recurringCard: {
+  recurringList: {},
+  recurringRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background.card,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    borderWidth: 1.5,
-    borderColor: colors.border.light,
-    ...shadows.sm,
+    paddingVertical: spacing.md,
   },
-  recurringCardDue: {
-    borderColor: colors.status.warning,
-    backgroundColor: colors.status.warningBg,
+  recurringRowBorder: {
+    borderBottomWidth: hairline,
+    borderBottomColor: colors.border.light,
   },
-  recurringCardContent: {
-    flex: 1,
-  },
-  recurringCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  recurringIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  recurringIconDue: {
-    backgroundColor: colors.status.warningBg,
-  },
-  recurringInfo: {
+  recurringContent: {
     flex: 1,
   },
   recurringTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '500',
     color: colors.text.primary,
   },
   recurringDue: {
-    fontSize: 13,
+    ...typography.caption,
     fontWeight: '500',
     marginTop: 2,
   },
-  recurringMeta: {
-    marginLeft: 40,
-  },
   recurringInterval: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.text.muted,
-  },
-  recurringNotes: {
-    fontSize: 12,
-    color: colors.text.muted,
-    fontStyle: 'italic',
-    marginTop: 2,
+    marginTop: 1,
   },
   recurringActions: {
     flexDirection: 'row',
@@ -904,15 +805,17 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   markDoneButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary[50],
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: hairline,
+    borderColor: colors.border.medium,
     justifyContent: 'center',
     alignItems: 'center',
   },
   markDoneButtonDue: {
     backgroundColor: colors.status.warning,
+    borderColor: colors.status.warning,
   },
   deleteButton: {
     width: 32,
@@ -924,73 +827,70 @@ const styles = StyleSheet.create({
 
   // Empty State
   emptyCard: {
-    backgroundColor: colors.background.card,
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl,
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.border.light,
-    borderStyle: 'dashed',
+    paddingVertical: spacing.xl,
+    borderTopWidth: hairline,
+    borderTopColor: colors.border.light,
+    borderBottomWidth: hairline,
+    borderBottomColor: colors.border.light,
   },
   emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '500',
     color: colors.text.secondary,
     marginTop: spacing.md,
   },
   emptySubtext: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.text.muted,
     marginTop: spacing.xs,
     marginBottom: spacing.lg,
   },
   emptyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary[50],
+    borderWidth: hairline,
+    borderColor: colors.text.primary,
+    borderRadius: borderRadius.sm,
   },
   emptyButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary[600],
+    ...typography.button,
+    color: colors.text.primary,
+    fontSize: 12,
   },
 
   // Appointment Card
   appointmentCard: {
     flexDirection: 'row',
-    backgroundColor: colors.background.card,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderWidth: 1.5,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: hairline,
     borderColor: colors.border.light,
-    ...shadows.sm,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    backgroundColor: colors.background.card,
   },
   appointmentCardNext: {
-    borderColor: colors.primary[300],
-    backgroundColor: colors.primary[50],
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent.warm,
   },
   appointmentDate: {
-    width: 48,
+    width: 44,
     alignItems: 'center',
     marginRight: spacing.md,
     paddingTop: 2,
   },
   appointmentDay: {
+    fontFamily: fonts.serif,
     fontSize: 24,
-    fontWeight: '700',
     color: colors.text.primary,
   },
   appointmentDayNext: {
-    color: colors.primary[600],
+    color: colors.accent.warm,
   },
   appointmentMonth: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...typography.caption,
+    fontWeight: '500',
     color: colors.text.secondary,
     textTransform: 'uppercase',
   },
@@ -998,13 +898,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   appointmentTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '500',
     color: colors.text.primary,
     marginBottom: 4,
   },
   appointmentTime: {
-    fontSize: 14,
+    ...typography.bodySmall,
     color: colors.text.secondary,
   },
   appointmentLocation: {
@@ -1014,11 +914,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   appointmentLocationText: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.text.muted,
   },
   appointmentNotes: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.text.muted,
     marginTop: 4,
     fontStyle: 'italic',
@@ -1040,74 +940,41 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   pastCount: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.caption,
+    fontWeight: '500',
     color: colors.text.muted,
-    backgroundColor: colors.background.secondary,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.full,
   },
   pastList: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
-  pastCard: {
+  pastRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.md,
     paddingVertical: spacing.md,
-    borderBottomWidth: 1,
+    borderBottomWidth: hairline,
     borderBottomColor: colors.border.light,
-  },
-  pastIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.status.successBg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
   },
   pastContent: {
     flex: 1,
   },
   pastTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
     color: colors.text.primary,
   },
   pastDate: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.text.muted,
     marginTop: 2,
-  },
-  pastNotes: {
-    fontSize: 12,
-    color: colors.text.muted,
-    marginTop: 2,
-    fontStyle: 'italic',
   },
 
-  // Info Card
-  infoCard: {
-    backgroundColor: colors.primary[50],
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-  },
-  infoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  infoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary[700],
-  },
-  infoText: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    lineHeight: 20,
+  // Tip
+  tipText: {
+    ...typography.caption,
+    color: colors.text.muted,
+    textAlign: 'center',
+    marginTop: spacing.md,
   },
 
   // Modal
@@ -1120,22 +987,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: spacing.lg,
-    borderBottomWidth: 1,
+    borderBottomWidth: hairline,
     borderBottomColor: colors.border.light,
   },
   modalCancel: {
-    fontSize: 16,
+    fontSize: 15,
     color: colors.text.secondary,
   },
   modalTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...typography.displaySmall,
     color: colors.text.primary,
+    fontSize: 17,
+    lineHeight: 22,
   },
   modalSave: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: colors.primary[600],
+    color: colors.text.primary,
   },
   modalSaveDisabled: {
     color: colors.text.muted,
@@ -1145,28 +1013,26 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
 
-  // Form
+  // Form — underline-style inputs
   inputGroup: {
     marginBottom: spacing.xl,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text.primary,
+    ...typography.label,
+    color: colors.text.secondary,
     marginBottom: spacing.sm,
   },
   input: {
-    backgroundColor: colors.background.card,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.lg,
+    borderBottomWidth: hairline,
+    borderBottomColor: colors.border.medium,
     paddingVertical: spacing.md,
+    paddingHorizontal: 0,
     fontSize: 16,
     color: colors.text.primary,
-    borderWidth: 1.5,
-    borderColor: colors.border.light,
+    backgroundColor: 'transparent',
   },
   textArea: {
-    minHeight: 100,
+    minHeight: 80,
     paddingTop: spacing.md,
   },
   quickDates: {
@@ -1178,14 +1044,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.background.secondary,
-    borderRadius: borderRadius.md,
+    borderWidth: hairline,
+    borderColor: colors.border.medium,
+    borderRadius: borderRadius.sm,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border.light,
   },
   quickDateText: {
-    fontSize: 14,
+    ...typography.bodySmall,
     fontWeight: '500',
     color: colors.text.secondary,
   },
@@ -1193,31 +1058,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    padding: spacing.md,
-    backgroundColor: colors.primary[50],
-    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
   },
   selectedDateText: {
-    fontSize: 15,
+    ...typography.bodySmall,
     fontWeight: '500',
-    color: colors.primary[700],
+    color: colors.text.primary,
   },
 
-  // Interval Options
+  // Interval Options — outlined chips
   intervalOptions: {
     gap: spacing.sm,
   },
   intervalOption: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    backgroundColor: colors.background.card,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1.5,
+    borderWidth: hairline,
     borderColor: colors.border.light,
+    borderRadius: borderRadius.sm,
   },
   intervalOptionSelected: {
-    borderColor: colors.primary[500],
-    backgroundColor: colors.primary[50],
+    borderColor: colors.text.primary,
   },
   intervalOptionText: {
     fontSize: 15,
@@ -1225,17 +1086,15 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
   },
   intervalOptionTextSelected: {
-    color: colors.primary[700],
     fontWeight: '600',
   },
 
-  // Suggestions
+  // Suggestions — outlined chips
   suggestionsSection: {
     marginTop: spacing.md,
   },
   suggestionsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text.secondary,
     marginBottom: spacing.sm,
   },
@@ -1247,12 +1106,13 @@ const styles = StyleSheet.create({
   suggestionChip: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.accent.light,
+    borderWidth: hairline,
+    borderColor: colors.border.medium,
     borderRadius: borderRadius.full,
   },
   suggestionText: {
-    fontSize: 13,
+    ...typography.bodySmall,
     fontWeight: '500',
-    color: colors.accent.warm,
+    color: colors.text.secondary,
   },
 });

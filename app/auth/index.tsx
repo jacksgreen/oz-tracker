@@ -9,12 +9,11 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import { colors, spacing, borderRadius, shadows, typography } from '../../lib/theme';
+import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
 
 type AuthStep = 'welcome' | 'signin' | 'household-choice' | 'create-household' | 'join-household';
 
@@ -26,7 +25,7 @@ export default function AuthScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [householdName, setHouseholdName] = useState('');
-  const [dogName, setDogName] = useState('Oz');
+  const [dogName, setDogName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [createdInviteCode, setCreatedInviteCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -93,51 +92,34 @@ export default function AuthScreen() {
 
   const renderWelcome = () => (
     <View style={styles.stepContainer}>
-      {/* Decorative paw prints */}
-      <View style={styles.pawPrintsContainer}>
-        <Text style={styles.pawPrint}>🐾</Text>
-        <Text style={[styles.pawPrint, styles.pawPrint2]}>🐾</Text>
-        <Text style={[styles.pawPrint, styles.pawPrint3]}>🐾</Text>
+      <View style={styles.welcomeHeader}>
+        <Text style={styles.welcomeTitle}>Dog Duty</Text>
+        <Text style={styles.welcomeSubtitle}>
+          Share the work of caring for your dog
+        </Text>
       </View>
-
-      <View style={styles.logoContainer}>
-        <View style={styles.logoCircle}>
-          <Text style={styles.logoEmoji}>🐕</Text>
-        </View>
-      </View>
-
-      <Text style={styles.welcomeTitle}>Oz Tracker</Text>
-      <Text style={styles.welcomeSubtitle}>
-        Keep track of walks, meals, and vet visits together
-      </Text>
 
       <TouchableOpacity
         style={styles.primaryButton}
         onPress={() => setStep('signin')}
         activeOpacity={0.8}
       >
-        <Text style={styles.primaryButtonText}>Get Started</Text>
-        <Ionicons name="arrow-forward" size={20} color={colors.text.inverse} />
+        <Text style={styles.primaryButtonText}>GET STARTED</Text>
+        <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
       </TouchableOpacity>
 
       <View style={styles.featureList}>
         <View style={styles.featureItem}>
-          <View style={styles.featureIcon}>
-            <Ionicons name="footsteps" size={18} color={colors.primary[600]} />
-          </View>
-          <Text style={styles.featureText}>Track morning & evening walks</Text>
+          <Ionicons name="people-outline" size={18} color={colors.text.secondary} />
+          <Text style={styles.featureText}>Coordinate walks and meals with your household</Text>
         </View>
         <View style={styles.featureItem}>
-          <View style={styles.featureIcon}>
-            <Ionicons name="restaurant" size={18} color={colors.primary[600]} />
-          </View>
-          <Text style={styles.featureText}>Log meals & feeding times</Text>
+          <Ionicons name="calendar-outline" size={18} color={colors.text.secondary} />
+          <Text style={styles.featureText}>Schedule shifts so everyone knows who's on duty</Text>
         </View>
         <View style={styles.featureItem}>
-          <View style={styles.featureIcon}>
-            <Ionicons name="medical" size={18} color={colors.primary[600]} />
-          </View>
-          <Text style={styles.featureText}>Schedule vet appointments</Text>
+          <Ionicons name="medical-outline" size={18} color={colors.text.secondary} />
+          <Text style={styles.featureText}>Track vet visits, flea meds, and recurring care</Text>
         </View>
       </View>
     </View>
@@ -146,14 +128,14 @@ export default function AuthScreen() {
   const renderSignIn = () => (
     <View style={styles.stepContainer}>
       <TouchableOpacity style={styles.backButton} onPress={() => setStep('welcome')}>
-        <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+        <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
       </TouchableOpacity>
 
-      <Text style={styles.stepTitle}>Welcome!</Text>
+      <Text style={styles.stepTitle}>Welcome</Text>
       <Text style={styles.stepSubtitle}>Let's get you set up</Text>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Your Name</Text>
+        <Text style={styles.inputLabel}>YOUR NAME</Text>
         <TextInput
           style={styles.input}
           placeholder="Enter your name"
@@ -166,7 +148,7 @@ export default function AuthScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Email</Text>
+        <Text style={styles.inputLabel}>EMAIL</Text>
         <TextInput
           style={styles.input}
           placeholder="your@email.com"
@@ -191,8 +173,8 @@ export default function AuthScreen() {
           <ActivityIndicator color={colors.text.inverse} />
         ) : (
           <>
-            <Text style={styles.primaryButtonText}>Continue</Text>
-            <Ionicons name="arrow-forward" size={20} color={colors.text.inverse} />
+            <Text style={styles.primaryButtonText}>CONTINUE</Text>
+            <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
           </>
         )}
       </TouchableOpacity>
@@ -201,12 +183,6 @@ export default function AuthScreen() {
 
   const renderHouseholdChoice = () => (
     <View style={styles.stepContainer}>
-      <View style={styles.logoContainer}>
-        <View style={[styles.logoCircle, styles.logoCircleSmall]}>
-          <Text style={styles.logoEmojiSmall}>🏠</Text>
-        </View>
-      </View>
-
       <Text style={styles.stepTitle}>Set Up Your Household</Text>
       <Text style={styles.stepSubtitle}>
         Create a new household or join an existing one with an invite code
@@ -217,16 +193,13 @@ export default function AuthScreen() {
         onPress={() => setStep('create-household')}
         activeOpacity={0.8}
       >
-        <View style={styles.choiceIconContainer}>
-          <Ionicons name="add-circle" size={32} color={colors.primary[500]} />
-        </View>
         <View style={styles.choiceContent}>
           <Text style={styles.choiceTitle}>Create New Household</Text>
           <Text style={styles.choiceDescription}>
-            Start fresh and invite your partner
+            Start fresh and invite your family
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={24} color={colors.text.muted} />
+        <Ionicons name="chevron-forward" size={20} color={colors.text.muted} />
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -234,16 +207,13 @@ export default function AuthScreen() {
         onPress={() => setStep('join-household')}
         activeOpacity={0.8}
       >
-        <View style={styles.choiceIconContainer}>
-          <Ionicons name="enter" size={32} color={colors.accent.warm} />
-        </View>
         <View style={styles.choiceContent}>
           <Text style={styles.choiceTitle}>Join Existing Household</Text>
           <Text style={styles.choiceDescription}>
             Enter an invite code to join
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={24} color={colors.text.muted} />
+        <Ionicons name="chevron-forward" size={20} color={colors.text.muted} />
       </TouchableOpacity>
     </View>
   );
@@ -251,22 +221,22 @@ export default function AuthScreen() {
   const renderCreateHousehold = () => (
     <View style={styles.stepContainer}>
       <TouchableOpacity style={styles.backButton} onPress={() => setStep('household-choice')}>
-        <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+        <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
       </TouchableOpacity>
 
       {createdInviteCode ? (
         <>
           <View style={styles.successContainer}>
             <View style={styles.successIcon}>
-              <Ionicons name="checkmark-circle" size={64} color={colors.status.success} />
+              <Ionicons name="checkmark" size={28} color={colors.status.success} />
             </View>
-            <Text style={styles.stepTitle}>You're All Set!</Text>
+            <Text style={styles.stepTitle}>You're All Set</Text>
             <Text style={styles.stepSubtitle}>
               Share this code with your partner to join
             </Text>
 
             <View style={styles.inviteCodeDisplay}>
-              <Text style={styles.inviteCodeLabel}>Invite Code</Text>
+              <Text style={styles.inviteCodeLabel}>INVITE CODE</Text>
               <Text style={styles.inviteCodeValue}>{createdInviteCode}</Text>
             </View>
 
@@ -276,8 +246,8 @@ export default function AuthScreen() {
                 onPress={() => router.replace('/(tabs)')}
                 activeOpacity={0.8}
               >
-                <Text style={styles.primaryButtonText}>Start Tracking</Text>
-                <Ionicons name="paw" size={20} color={colors.text.inverse} />
+                <Text style={styles.primaryButtonText}>START TRACKING</Text>
+                <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
               </TouchableOpacity>
             ) : (
               <View style={[styles.primaryButton, styles.buttonDisabled]}>
@@ -293,7 +263,7 @@ export default function AuthScreen() {
           <Text style={styles.stepSubtitle}>Tell us about your home</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Household Name</Text>
+            <Text style={styles.inputLabel}>HOUSEHOLD NAME</Text>
             <TextInput
               style={styles.input}
               placeholder="e.g., The Smith Family"
@@ -305,10 +275,10 @@ export default function AuthScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Dog's Name</Text>
+            <Text style={styles.inputLabel}>DOG'S NAME</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g., Oz"
+              placeholder="Your dog's name"
               placeholderTextColor={colors.text.muted}
               value={dogName}
               onChangeText={setDogName}
@@ -328,8 +298,8 @@ export default function AuthScreen() {
               <ActivityIndicator color={colors.text.inverse} />
             ) : (
               <>
-                <Text style={styles.primaryButtonText}>Create Household</Text>
-                <Ionicons name="home" size={20} color={colors.text.inverse} />
+                <Text style={styles.primaryButtonText}>CREATE HOUSEHOLD</Text>
+                <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
               </>
             )}
           </TouchableOpacity>
@@ -341,7 +311,7 @@ export default function AuthScreen() {
   const renderJoinHousehold = () => (
     <View style={styles.stepContainer}>
       <TouchableOpacity style={styles.backButton} onPress={() => setStep('household-choice')}>
-        <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+        <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
       </TouchableOpacity>
 
       <Text style={styles.stepTitle}>Join Household</Text>
@@ -350,7 +320,7 @@ export default function AuthScreen() {
       </Text>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Invite Code</Text>
+        <Text style={styles.inputLabel}>INVITE CODE</Text>
         <TextInput
           style={[styles.input, styles.codeInput]}
           placeholder="XXXXXX"
@@ -374,8 +344,8 @@ export default function AuthScreen() {
           <ActivityIndicator color={colors.text.inverse} />
         ) : (
           <>
-            <Text style={styles.primaryButtonText}>Join Household</Text>
-            <Ionicons name="enter" size={20} color={colors.text.inverse} />
+            <Text style={styles.primaryButtonText}>JOIN HOUSEHOLD</Text>
+            <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
           </>
         )}
       </TouchableOpacity>
@@ -421,149 +391,79 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: spacing.lg,
-    paddingTop: 60,
+    paddingTop: 80,
     paddingBottom: spacing.xxl,
   },
   stepContainer: {
     flex: 1,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.background.secondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
 
-  // Welcome screen
-  pawPrintsContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-  },
-  pawPrint: {
-    position: 'absolute',
-    fontSize: 32,
-    opacity: 0.15,
-    top: 20,
-    right: 40,
-    transform: [{ rotate: '-15deg' }],
-  },
-  pawPrint2: {
-    top: 60,
-    right: 100,
-    fontSize: 24,
-    transform: [{ rotate: '10deg' }],
-  },
-  pawPrint3: {
-    top: 30,
-    left: 30,
-    fontSize: 28,
-    transform: [{ rotate: '-25deg' }],
-  },
-  logoContainer: {
-    alignItems: 'center',
+  // Welcome screen — no emoji, typography-driven
+  welcomeHeader: {
     marginTop: spacing.xxl,
     marginBottom: spacing.xl,
   },
-  logoCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.primary[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.lg,
-  },
-  logoCircleSmall: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-  logoEmoji: {
-    fontSize: 56,
-  },
-  logoEmojiSmall: {
-    fontSize: 36,
-  },
   welcomeTitle: {
-    fontSize: 36,
-    fontWeight: '700',
+    fontFamily: fonts.serif,
+    fontSize: 48,
     color: colors.text.primary,
     textAlign: 'center',
     letterSpacing: -1,
     marginBottom: spacing.sm,
   },
   welcomeSubtitle: {
-    fontSize: 17,
+    ...typography.displayItalic,
     color: colors.text.secondary,
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: spacing.xl,
     paddingHorizontal: spacing.lg,
   },
   featureList: {
     marginTop: spacing.xxl,
-    gap: spacing.md,
+    gap: spacing.lg,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
   },
-  featureIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   featureText: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.text.secondary,
     flex: 1,
   },
 
   // Step screens
   stepTitle: {
-    fontSize: 28,
-    fontWeight: '700',
+    ...typography.displayMedium,
     color: colors.text.primary,
-    letterSpacing: -0.5,
     marginBottom: spacing.sm,
   },
   stepSubtitle: {
-    fontSize: 16,
+    ...typography.body,
     color: colors.text.secondary,
-    lineHeight: 22,
     marginBottom: spacing.xl,
   },
 
-  // Inputs
+  // Inputs — underline style
   inputGroup: {
     marginBottom: spacing.lg,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text.primary,
+    ...typography.label,
+    color: colors.text.secondary,
     marginBottom: spacing.sm,
-    letterSpacing: 0.3,
   },
   input: {
-    height: 56,
-    backgroundColor: colors.background.card,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.lg,
+    borderBottomWidth: hairline,
+    borderBottomColor: colors.border.medium,
+    paddingVertical: spacing.md,
+    paddingHorizontal: 0,
     fontSize: 16,
     color: colors.text.primary,
-    borderWidth: 1.5,
-    borderColor: colors.border.light,
+    backgroundColor: 'transparent',
   },
   codeInput: {
     textAlign: 'center',
@@ -572,100 +472,90 @@ const styles = StyleSheet.create({
     letterSpacing: 8,
   },
 
-  // Buttons
+  // Buttons — ink background, uppercase tracked
   primaryButton: {
-    height: 56,
-    backgroundColor: colors.primary[500],
-    borderRadius: borderRadius.lg,
+    height: 52,
+    backgroundColor: colors.text.primary,
+    borderRadius: borderRadius.sm,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.sm,
     marginTop: spacing.md,
-    ...shadows.md,
   },
   primaryButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...typography.button,
     color: colors.text.inverse,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
 
-  // Choice cards
+  // Choice cards — thin borders, no shadows
   choiceCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background.card,
-    borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    borderWidth: 1.5,
+    borderWidth: hairline,
     borderColor: colors.border.light,
-    ...shadows.sm,
-  },
-  choiceIconContainer: {
-    width: 56,
-    height: 56,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.background.secondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
   },
   choiceContent: {
     flex: 1,
   },
   choiceTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '500',
     color: colors.text.primary,
     marginBottom: 4,
   },
   choiceDescription: {
-    fontSize: 14,
+    ...typography.bodySmall,
     color: colors.text.secondary,
   },
 
-  // Success state
+  // Success state — minimal
   successContainer: {
     alignItems: 'center',
     paddingTop: spacing.xl,
   },
   successIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: hairline,
+    borderColor: colors.status.success,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: spacing.lg,
   },
   inviteCodeDisplay: {
-    backgroundColor: colors.primary[50],
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
     alignItems: 'center',
     marginVertical: spacing.xl,
-    borderWidth: 2,
-    borderColor: colors.primary[200],
-    borderStyle: 'dashed',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    borderWidth: hairline,
+    borderColor: colors.border.medium,
+    borderRadius: borderRadius.md,
     width: '100%',
   },
   inviteCodeLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary[600],
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    ...typography.label,
+    color: colors.text.secondary,
     marginBottom: spacing.sm,
   },
   inviteCodeValue: {
+    fontFamily: fonts.serif,
     fontSize: 32,
-    fontWeight: '700',
-    color: colors.primary[700],
+    color: colors.text.primary,
     letterSpacing: 4,
   },
 
   // Error
   errorText: {
-    fontSize: 14,
-    color: '#EF4444',
+    ...typography.bodySmall,
+    color: colors.status.error,
     marginTop: -spacing.sm,
     marginBottom: spacing.md,
   },

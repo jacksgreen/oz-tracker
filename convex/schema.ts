@@ -13,6 +13,7 @@ export default defineSchema({
     name: v.string(),
     clerkId: v.optional(v.string()),
     householdId: v.optional(v.id("households")),
+    expoPushToken: v.optional(v.string()),
   })
     .index("by_email", ["email"])
     .index("by_clerk_id", ["clerkId"]),

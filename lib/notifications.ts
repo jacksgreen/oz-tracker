@@ -13,8 +13,8 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const NOTIFICATION_PERMISSION_KEY = '@oz_tracker_notification_permission';
-const SCHEDULED_REMINDERS_KEY = '@oz_tracker_scheduled_reminders';
+const NOTIFICATION_PERMISSION_KEY = '@dog_duty_notification_permission';
+const SCHEDULED_REMINDERS_KEY = '@dog_duty_scheduled_reminders';
 
 // Types for scheduled reminders tracking
 interface ScheduledReminder {
@@ -43,115 +43,6 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 export async function areNotificationsEnabled(): Promise<boolean> {
   const { status } = await Notifications.getPermissionsAsync();
   return status === 'granted';
-}
-
-// ============================================
-// ACTION NOTIFICATIONS (immediate feedback)
-// ============================================
-
-// Show notification when a care shift is completed
-export async function notifyShiftCompleted(
-  dogName: string,
-  shiftType: 'am' | 'pm',
-  completedByName: string
-): Promise<void> {
-  const hasPermission = await areNotificationsEnabled();
-  if (!hasPermission) return;
-
-  const shiftLabel = shiftType === 'am' ? 'Morning' : 'Evening';
-
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: `${shiftLabel} shift done!`,
-      body: `${completedByName} completed ${dogName}'s ${shiftLabel.toLowerCase()} walk and meal.`,
-      data: { type: 'shift_completed', shiftType },
-    },
-    trigger: null, // Show immediately
-  });
-}
-
-// Show notification when a shift is scheduled/assigned
-export async function notifyShiftScheduled(
-  dogName: string,
-  shiftType: 'am' | 'pm',
-  assignedToName: string,
-  date: Date
-): Promise<void> {
-  const hasPermission = await areNotificationsEnabled();
-  if (!hasPermission) return;
-
-  const shiftLabel = shiftType === 'am' ? 'Morning' : 'Evening';
-  const dateStr = formatDateForNotification(date);
-
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Shift Assigned',
-      body: `${assignedToName} will handle ${dogName}'s ${shiftLabel.toLowerCase()} shift on ${dateStr}.`,
-      data: { type: 'shift_scheduled', shiftType },
-    },
-    trigger: null,
-  });
-}
-
-// Show notification when an appointment is scheduled
-export async function notifyAppointmentScheduled(
-  dogName: string,
-  appointmentTitle: string,
-  date: Date
-): Promise<void> {
-  const hasPermission = await areNotificationsEnabled();
-  if (!hasPermission) return;
-
-  const dateStr = formatDateForNotification(date);
-  const timeStr = formatTimeForNotification(date);
-
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Appointment Scheduled',
-      body: `${appointmentTitle} for ${dogName} on ${dateStr} at ${timeStr}.`,
-      data: { type: 'appointment_scheduled' },
-    },
-    trigger: null,
-  });
-}
-
-// Show notification when an appointment is completed
-export async function notifyAppointmentCompleted(
-  dogName: string,
-  appointmentTitle: string
-): Promise<void> {
-  const hasPermission = await areNotificationsEnabled();
-  if (!hasPermission) return;
-
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Appointment Complete',
-      body: `${appointmentTitle} for ${dogName} has been completed.`,
-      data: { type: 'appointment_completed' },
-    },
-    trigger: null,
-  });
-}
-
-// Show notification when recurring care is marked done
-export async function notifyRecurringEventCompleted(
-  dogName: string,
-  eventTitle: string,
-  nextDueDate: Date
-): Promise<void> {
-  const hasPermission = await areNotificationsEnabled();
-  if (!hasPermission) return;
-
-  const nextDateStr = formatDateForNotification(nextDueDate);
-
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: `${eventTitle} Done!`,
-      body: `${dogName}'s ${eventTitle.toLowerCase()} is complete. Next due: ${nextDateStr}.`,
-      data: { type: 'recurring_completed' },
-    },
-    trigger: null,
-  });
 }
 
 // ============================================
@@ -420,7 +311,7 @@ export async function cleanupExpiredReminders(): Promise<void> {
   await AsyncStorage.setItem(SCHEDULED_REMINDERS_KEY, JSON.stringify(valid));
 }
 
-// Get push token for potential future use with push notifications
+// Get push token for push notifications
 export async function registerForPushNotifications(): Promise<string | null> {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
@@ -434,7 +325,13 @@ export async function registerForPushNotifications(): Promise<string | null> {
   const hasPermission = await requestNotificationPermissions();
   if (!hasPermission) return null;
 
-  // For local notifications, we don't need a push token
-  // But this can be extended for push notifications later
-  return null;
+  try {
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId: '79e244ce-a5cb-4f07-9743-22ebaa9a440d',
+    });
+    return tokenData.data;
+  } catch (error) {
+    console.error('Failed to get push token:', error);
+    return null;
+  }
 }

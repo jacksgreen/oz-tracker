@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 export const add = mutation({
   args: {
@@ -8,9 +9,10 @@ export const add = mutation({
     date: v.number(),
     location: v.optional(v.string()),
     notes: v.optional(v.string()),
+    actingUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("appointments", {
+    const id = await ctx.db.insert("appointments", {
       householdId: args.householdId,
       title: args.title,
       date: args.date,
@@ -18,6 +20,18 @@ export const add = mutation({
       notes: args.notes,
       completed: false,
     });
+
+    if (args.actingUserId) {
+      const household = await ctx.db.get(args.householdId);
+      await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
+        householdId: args.householdId,
+        excludeUserId: args.actingUserId,
+        title: "Appointment Scheduled",
+        body: `${args.title} for ${household?.dogName ?? "the dog"} has been scheduled.`,
+      });
+    }
+
+    return id;
   },
 });
 
@@ -55,12 +69,24 @@ export const markComplete = mutation({
   args: {
     appointmentId: v.id("appointments"),
     notes: v.optional(v.string()),
+    actingUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    const appointment = await ctx.db.get(args.appointmentId);
     await ctx.db.patch(args.appointmentId, {
       completed: true,
       notes: args.notes,
     });
+
+    if (args.actingUserId && appointment) {
+      const household = await ctx.db.get(appointment.householdId);
+      await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
+        householdId: appointment.householdId,
+        excludeUserId: args.actingUserId,
+        title: "Appointment Complete",
+        body: `${appointment.title} for ${household?.dogName ?? "the dog"} has been completed.`,
+      });
+    }
   },
 });
 

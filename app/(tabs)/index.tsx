@@ -13,8 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useAuth } from '../../context/AuthContext';
-import { useNotifications } from '../../context/NotificationContext';
-import { colors, spacing, borderRadius, shadows } from '../../lib/theme';
+import { colors, spacing, borderRadius, shadows, typography, fonts, hairline } from '../../lib/theme';
 
 // Get today's start-of-day timestamp in local timezone
 const getTodayTimestamp = () => {
@@ -38,21 +37,20 @@ const SHIFT_CONFIG: Record<ShiftType, ShiftConfig> = {
     label: 'Morning Shift',
     description: 'Walk + Breakfast',
     icon: 'sunny',
-    color: '#F59E0B',
-    bgColor: '#FEF3C7',
+    color: '#8B7355',
+    bgColor: '#F2EDE5',
   },
   pm: {
     label: 'Evening Shift',
     description: 'Walk + Dinner',
     icon: 'moon',
-    color: '#6366F1',
-    bgColor: '#E0E7FF',
+    color: '#6B6B6B',
+    bgColor: '#EDE8DF',
   },
 };
 
 export default function HomeScreen() {
   const { user, household } = useAuth();
-  const { onShiftCompleted } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
 
   const todayTimestamp = getTodayTimestamp();
@@ -88,9 +86,6 @@ export default function HomeScreen() {
       type,
       clientDate: startOfDay.getTime(),
     });
-
-    // Send notification for shift completion
-    await onShiftCompleted(type, user.name);
   };
 
   const handleUndoShift = async (shiftId: NonNullable<typeof amShift>['_id']) => {
@@ -140,7 +135,7 @@ export default function HomeScreen() {
   if (!household) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary[500]} />
+        <ActivityIndicator size="large" color={colors.text.primary} />
       </View>
     );
   }
@@ -157,9 +152,7 @@ export default function HomeScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.shiftCardHeader}>
-          <View style={[styles.shiftIconContainer, { backgroundColor: config.bgColor }]}>
-            <Ionicons name={config.icon} size={24} color={config.color} />
-          </View>
+          <Ionicons name={config.icon} size={18} color={config.color} style={{ marginRight: spacing.sm }} />
           <View style={styles.shiftTitleContainer}>
             <Text style={styles.shiftLabel}>{config.label}</Text>
             <Text style={styles.shiftDescription}>{config.description}</Text>
@@ -169,7 +162,7 @@ export default function HomeScreen() {
         {isCompleted ? (
           <View style={styles.shiftCompleteContent}>
             <View style={styles.shiftCompleteRow}>
-              <Ionicons name="checkmark-circle" size={28} color={colors.status.success} />
+              <Ionicons name="checkmark-circle" size={22} color={colors.status.success} />
               <View style={styles.shiftCompleteText}>
                 <Text style={styles.shiftCompletedBy}>{shift.completedByUserName}</Text>
                 <Text style={styles.shiftCompletedTime}>{formatTime(shift.completedAt!)}</Text>
@@ -180,8 +173,8 @@ export default function HomeScreen() {
           <View style={styles.shiftPendingContent}>
             {shift ? (
               <View style={styles.shiftAssignedRow}>
-                <View style={[styles.assignedBadge, { backgroundColor: config.bgColor }]}>
-                  <Text style={[styles.assignedInitial, { color: config.color }]}>
+                <View style={styles.assignedBadge}>
+                  <Text style={styles.assignedInitial}>
                     {shift.assignedUserName.charAt(0)}
                   </Text>
                 </View>
@@ -190,13 +183,13 @@ export default function HomeScreen() {
                   <Text style={styles.assignedName}>{shift.assignedUserName}</Text>
                 </View>
                 <View style={styles.tapIndicator}>
-                  <Ionicons name="checkmark" size={18} color={colors.text.muted} />
+                  <Ionicons name="checkmark" size={16} color={colors.text.muted} />
                 </View>
               </View>
             ) : (
               <View style={styles.shiftUnassignedRow}>
                 <View style={styles.emptyCircle}>
-                  <Ionicons name="add" size={20} color={colors.text.muted} />
+                  <Ionicons name="add" size={18} color={colors.text.muted} />
                 </View>
                 <Text style={styles.tapToLog}>Tap to mark as done</Text>
               </View>
@@ -217,7 +210,7 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.primary[500]}
+            tintColor={colors.text.primary}
           />
         }
       >
@@ -228,7 +221,9 @@ export default function HomeScreen() {
             <Text style={styles.dogName}>{household.dogName}'s Day</Text>
           </View>
           <View style={styles.avatarContainer}>
-            <Text style={styles.avatar}>🐕</Text>
+            <Text style={styles.avatar}>
+              {household.dogName.charAt(0).toUpperCase()}
+            </Text>
           </View>
         </View>
 
@@ -237,10 +232,10 @@ export default function HomeScreen() {
           {isShiftsLoading ? (
             <>
               <View style={styles.shiftCardSkeleton}>
-                <ActivityIndicator size="small" color={colors.primary[400]} />
+                <ActivityIndicator size="small" color={colors.text.muted} />
               </View>
               <View style={styles.shiftCardSkeleton}>
-                <ActivityIndicator size="small" color={colors.primary[400]} />
+                <ActivityIndicator size="small" color={colors.text.muted} />
               </View>
             </>
           ) : (
@@ -253,38 +248,28 @@ export default function HomeScreen() {
 
         {/* Today's Progress */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Today's Progress</Text>
+          <Text style={styles.sectionTitle}>TODAY'S PROGRESS</Text>
           <View style={styles.progressCard}>
-            <View style={styles.progressCircleContainer}>
-              <View style={[
-                styles.progressCircle,
-                completedShifts === 2 && styles.progressCircleComplete
+            <View style={styles.progressNumberContainer}>
+              <Text style={[
+                styles.progressNumber,
+                completedShifts === 2 && styles.progressNumberComplete
               ]}>
-                <Text style={[
-                  styles.progressNumber,
-                  completedShifts === 2 && styles.progressNumberComplete
-                ]}>
-                  {completedShifts}
-                </Text>
-                <Text style={[
-                  styles.progressOf,
-                  completedShifts === 2 && styles.progressOfComplete
-                ]}>
-                  of 2
-                </Text>
-              </View>
+                {completedShifts}
+              </Text>
+              <Text style={styles.progressOf}>of 2</Text>
             </View>
             <View style={styles.progressTextContainer}>
               <Text style={styles.progressLabel}>Shifts Completed</Text>
               <Text style={styles.progressSubtext}>
                 {completedShifts === 0 && "No shifts done yet today"}
-                {completedShifts === 1 && "One more shift to go!"}
-                {completedShifts === 2 && "All done for today!"}
+                {completedShifts === 1 && "One more shift to go"}
+                {completedShifts === 2 && "All done for today"}
               </Text>
             </View>
             {completedShifts === 2 && (
               <View style={styles.progressCheckmark}>
-                <Ionicons name="ribbon" size={28} color={colors.status.success} />
+                <Ionicons name="ribbon" size={24} color={colors.status.success} />
               </View>
             )}
           </View>
@@ -293,18 +278,15 @@ export default function HomeScreen() {
         {/* Upcoming Appointment */}
         {isAppointmentsLoading ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Upcoming Appointment</Text>
+            <Text style={styles.sectionTitle}>UPCOMING APPOINTMENT</Text>
             <View style={styles.appointmentCardSkeleton}>
-              <ActivityIndicator size="small" color={colors.primary[400]} />
+              <ActivityIndicator size="small" color={colors.text.muted} />
             </View>
           </View>
         ) : nextAppointment && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Upcoming Appointment</Text>
+            <Text style={styles.sectionTitle}>UPCOMING APPOINTMENT</Text>
             <View style={styles.appointmentCard}>
-              <View style={styles.appointmentIcon}>
-                <Ionicons name="medical" size={24} color={colors.primary[600]} />
-              </View>
               <View style={styles.appointmentContent}>
                 <Text style={styles.appointmentTitle}>{nextAppointment.title}</Text>
                 <Text style={styles.appointmentDate}>
@@ -312,14 +294,14 @@ export default function HomeScreen() {
                 </Text>
                 {nextAppointment.location && (
                   <View style={styles.appointmentLocation}>
-                    <Ionicons name="location" size={14} color={colors.text.muted} />
+                    <Ionicons name="location-outline" size={14} color={colors.text.muted} />
                     <Text style={styles.appointmentLocationText}>
                       {nextAppointment.location}
                     </Text>
                   </View>
                 )}
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.text.muted} />
+              <Ionicons name="chevron-forward" size={18} color={colors.text.muted} />
             </View>
           </View>
         )}
@@ -339,32 +321,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.background.primary,
   },
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: 15,
-    color: colors.text.secondary,
-  },
   shiftCardSkeleton: {
     backgroundColor: colors.background.card,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    borderWidth: 1.5,
+    borderWidth: hairline,
     borderColor: colors.border.light,
-    height: 140,
+    height: 120,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.sm,
   },
   appointmentCardSkeleton: {
     backgroundColor: colors.background.card,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    borderWidth: 1.5,
-    borderColor: colors.primary[200],
+    borderWidth: hairline,
+    borderColor: colors.border.light,
     height: 80,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.sm,
   },
   scrollView: {
     flex: 1,
@@ -382,28 +357,28 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   greeting: {
-    fontSize: 14,
+    ...typography.label,
     color: colors.text.secondary,
-    fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   dogName: {
-    fontSize: 28,
-    fontWeight: '700',
+    ...typography.displayLarge,
     color: colors.text.primary,
-    letterSpacing: -0.5,
   },
   avatarContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary[100],
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: hairline,
+    borderColor: colors.border.medium,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.md,
+    backgroundColor: colors.background.card,
   },
   avatar: {
-    fontSize: 28,
+    fontFamily: fonts.serif,
+    fontSize: 26,
+    color: colors.text.primary,
   },
 
   // Shifts Section
@@ -413,65 +388,55 @@ const styles = StyleSheet.create({
   },
   shiftCard: {
     backgroundColor: colors.background.card,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    borderWidth: 1.5,
+    borderWidth: hairline,
     borderColor: colors.border.light,
-    ...shadows.sm,
   },
   shiftCardComplete: {
-    backgroundColor: colors.status.successBg,
-    borderColor: colors.status.success,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.status.success,
   },
   shiftCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  shiftIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
   shiftTitleContainer: {
     flex: 1,
   },
   shiftLabel: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontFamily: fonts.serif,
+    fontSize: 18,
     color: colors.text.primary,
     marginBottom: 2,
   },
   shiftDescription: {
-    fontSize: 13,
+    ...typography.bodySmall,
     color: colors.text.secondary,
-    fontWeight: '500',
   },
 
   // Shift Complete State
   shiftCompleteContent: {
     paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.status.success,
+    borderTopWidth: hairline,
+    borderTopColor: colors.border.light,
   },
   shiftCompleteRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   shiftCompleteText: {
     flex: 1,
   },
   shiftCompletedBy: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '500',
     color: colors.text.primary,
   },
   shiftCompletedTime: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.text.secondary,
     marginTop: 2,
   },
@@ -479,7 +444,7 @@ const styles = StyleSheet.create({
   // Shift Pending State
   shiftPendingContent: {
     paddingTop: spacing.sm,
-    borderTopWidth: 1,
+    borderTopWidth: hairline,
     borderTopColor: colors.border.light,
   },
   shiftAssignedRow: {
@@ -488,34 +453,39 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   assignedBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: hairline,
+    borderColor: colors.border.medium,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.background.card,
   },
   assignedInitial: {
+    fontFamily: fonts.serif,
     fontSize: 16,
-    fontWeight: '700',
+    color: colors.text.primary,
   },
   assignedTextContainer: {
     flex: 1,
   },
   assignedLabel: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.text.muted,
     marginBottom: 2,
   },
   assignedName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '500',
     color: colors.text.primary,
   },
   tapIndicator: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.background.muted,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: hairline,
+    borderColor: colors.border.light,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -527,19 +497,17 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   emptyCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: hairline,
     borderColor: colors.border.medium,
-    borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
   },
   tapToLog: {
-    fontSize: 14,
+    ...typography.bodySmall,
     color: colors.text.muted,
-    fontWeight: '500',
   },
 
   // Section
@@ -547,9 +515,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text.primary,
+    ...typography.label,
+    color: colors.text.secondary,
     marginBottom: spacing.md,
   },
 
@@ -560,54 +527,38 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.card,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    borderWidth: 1.5,
+    borderWidth: hairline,
     borderColor: colors.border.light,
-    ...shadows.sm,
   },
-  progressCircleContainer: {
+  progressNumberContainer: {
     marginRight: spacing.lg,
-  },
-  progressCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.background.muted,
-    borderWidth: 3,
-    borderColor: colors.border.medium,
-    justifyContent: 'center',
     alignItems: 'center',
   },
-  progressCircleComplete: {
-    backgroundColor: colors.status.successBg,
-    borderColor: colors.status.success,
-  },
   progressNumber: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontFamily: fonts.serif,
+    fontSize: 38,
     color: colors.text.primary,
+    lineHeight: 42,
   },
   progressNumberComplete: {
     color: colors.status.success,
   },
   progressOf: {
-    fontSize: 11,
+    ...typography.caption,
     color: colors.text.muted,
-    marginTop: -2,
-  },
-  progressOfComplete: {
-    color: colors.status.success,
+    marginTop: -4,
   },
   progressTextContainer: {
     flex: 1,
   },
   progressLabel: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '500',
     color: colors.text.primary,
     marginBottom: 4,
   },
   progressSubtext: {
-    fontSize: 13,
+    ...typography.bodySmall,
     color: colors.text.secondary,
   },
   progressCheckmark: {
@@ -621,31 +572,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.card,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    borderWidth: 1.5,
-    borderColor: colors.primary[200],
-    ...shadows.sm,
-  },
-  appointmentIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
+    borderWidth: hairline,
+    borderColor: colors.border.light,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent.warm,
   },
   appointmentContent: {
     flex: 1,
   },
   appointmentTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: fonts.serif,
+    fontSize: 18,
     color: colors.text.primary,
     marginBottom: 4,
   },
   appointmentDate: {
-    fontSize: 14,
-    color: colors.primary[600],
+    ...typography.bodySmall,
+    color: colors.text.secondary,
     fontWeight: '500',
   },
   appointmentLocation: {
@@ -655,7 +598,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   appointmentLocationText: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.text.muted,
   },
 });

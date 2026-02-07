@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 // Add a new repeating event
 export const add = mutation({
@@ -52,14 +53,26 @@ export const getAll = query({
 export const markDone = mutation({
   args: {
     eventId: v.id("repeatingEvents"),
+    actingUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    const event = await ctx.db.get(args.eventId);
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
     await ctx.db.patch(args.eventId, {
       lastCompletedDate: now.getTime(),
     });
+
+    if (args.actingUserId && event) {
+      const household = await ctx.db.get(event.householdId);
+      await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
+        householdId: event.householdId,
+        excludeUserId: args.actingUserId,
+        title: `${event.title} Done!`,
+        body: `${household?.dogName ?? "The dog"}'s ${event.title.toLowerCase()} is complete.`,
+      });
+    }
   },
 });
 

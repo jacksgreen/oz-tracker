@@ -40,6 +40,18 @@ export const create = mutation({
   },
 });
 
+export const savePushToken = mutation({
+  args: {
+    userId: v.id("users"),
+    expoPushToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      expoPushToken: args.expoPushToken,
+    });
+  },
+});
+
 export const update = mutation({
   args: {
     userId: v.id("users"),

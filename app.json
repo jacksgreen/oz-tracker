@@ -1,21 +1,21 @@
 {
   "expo": {
-    "name": "Oz Tracker",
-    "slug": "oz-tracker",
+    "name": "Dog Duty",
+    "slug": "dog-duty",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "scheme": "oz-tracker",
+    "scheme": "dog-duty",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FAF7F2"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.oztracker.app",
+      "bundleIdentifier": "com.dogduty.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -23,11 +23,11 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#FAF7F2"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.oztracker.app"
+      "package": "com.dogduty.app"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -39,9 +39,10 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#F97316"
+          "color": "#C8A97E"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "router": {},

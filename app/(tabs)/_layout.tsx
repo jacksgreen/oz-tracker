@@ -1,8 +1,8 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, StyleSheet, Platform } from 'react-native';
-import { colors, borderRadius, shadows } from '../../lib/theme';
+import { StyleSheet, Platform } from 'react-native';
+import { colors, hairline } from '../../lib/theme';
 import { useAuth } from '../../context/AuthContext';
 import { Redirect } from 'expo-router';
 
@@ -21,7 +21,7 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: colors.primary[600],
+        tabBarActiveTintColor: colors.text.primary,
         tabBarInactiveTintColor: colors.text.muted,
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,
@@ -30,36 +30,36 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'HOME',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? 'home' : 'home-outline'} color={color} focused={focused} />
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="schedule"
         options={{
-          title: 'Schedule',
+          title: 'SCHEDULE',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? 'calendar' : 'calendar-outline'} color={color} focused={focused} />
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="vet"
         options={{
-          title: 'Vet',
+          title: 'HEALTH',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? 'medical' : 'medical-outline'} color={color} focused={focused} />
+            <Ionicons name={focused ? 'medical' : 'medical-outline'} size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="household"
         options={{
-          title: 'Household',
+          title: 'HOUSEHOLD',
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? 'people' : 'people-outline'} color={color} focused={focused} />
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={22} color={color} />
           ),
         }}
       />
@@ -67,39 +67,24 @@ export default function TabLayout() {
   );
 }
 
-function TabIcon({ name, color, focused }: { name: IconName; color: string; focused: boolean }) {
-  return (
-    <View style={[styles.iconContainer, focused && styles.iconContainerFocused]}>
-      <Ionicons name={name} size={24} color={color} />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: colors.background.card,
-    borderTopWidth: 0,
+    borderTopWidth: hairline,
+    borderTopColor: colors.border.light,
     height: Platform.OS === 'ios' ? 88 : 64,
     paddingTop: 8,
     paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-    ...shadows.lg,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   tabBarLabel: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '500',
+    letterSpacing: 1.2,
     marginTop: 4,
   },
   tabBarItem: {
     paddingTop: 4,
-  },
-  iconContainer: {
-    width: 40,
-    height: 32,
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconContainerFocused: {
-    backgroundColor: colors.primary[50],
   },
 });
