@@ -32,12 +32,12 @@ export function Modal({ visible, onClose, children }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center animate-fade-in"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-ink/50" />
+      <div className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" />
       <div
-        className="relative bg-white rounded-t-xl sm:rounded-xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto"
+        className="relative bg-white rounded-t-2xl sm:rounded-xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto shadow-xl animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -75,7 +75,7 @@ export function FullModal({ visible, onClose, children }: FullModalProps) {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-cream flex flex-col">
+    <div className="fixed inset-0 z-50 bg-cream flex flex-col animate-fade-in">
       {children}
     </div>
   );

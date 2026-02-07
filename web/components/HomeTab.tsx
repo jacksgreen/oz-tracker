@@ -111,8 +111,8 @@ export function HomeTab() {
             ? handleUndoShift(shift._id)
             : handleLogShift(type)
         }
-        className={`w-full bg-white rounded-lg p-6 border border-border text-left transition-all hover:shadow-sm cursor-pointer ${
-          isCompleted ? "border-l-[3px] border-l-success" : ""
+        className={`w-full bg-white rounded-lg p-6 border border-border text-left transition-all hover:shadow-md hover:border-border-dark cursor-pointer ${
+          isCompleted ? "border-l-[3px] border-l-success shadow-sm" : "shadow-sm"
         }`}
       >
         <div className="flex items-center mb-4">
@@ -184,7 +184,7 @@ export function HomeTab() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 animate-slide-up">
         <div>
           <p className="text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-1.5">
             {getGreeting()}
@@ -199,7 +199,7 @@ export function HomeTab() {
             {household.dogName}&apos;s Day
           </h1>
         </div>
-        <div className="w-13 h-13 rounded-full border border-border-dark flex items-center justify-center bg-white">
+        <div className="w-13 h-13 rounded-full border border-border-dark flex items-center justify-center bg-white shadow-sm">
           <span
             className="text-ink text-2xl"
             style={{ fontFamily: "var(--font-instrument-serif)" }}
@@ -213,27 +213,27 @@ export function HomeTab() {
       <div className="space-y-4 mb-8">
         {todayShifts === undefined ? (
           <>
-            <div className="bg-white rounded-lg p-6 border border-border h-[120px] flex items-center justify-center">
+            <div className="bg-white rounded-lg p-6 border border-border h-[120px] flex items-center justify-center shadow-sm">
               <div className="w-5 h-5 border-2 border-ink-faint border-t-transparent rounded-full animate-spin" />
             </div>
-            <div className="bg-white rounded-lg p-6 border border-border h-[120px] flex items-center justify-center">
+            <div className="bg-white rounded-lg p-6 border border-border h-[120px] flex items-center justify-center shadow-sm">
               <div className="w-5 h-5 border-2 border-ink-faint border-t-transparent rounded-full animate-spin" />
             </div>
           </>
         ) : (
           <>
-            {renderShiftCard("am", amShift)}
-            {renderShiftCard("pm", pmShift)}
+            <div className="animate-slide-up stagger-1">{renderShiftCard("am", amShift)}</div>
+            <div className="animate-slide-up stagger-2">{renderShiftCard("pm", pmShift)}</div>
           </>
         )}
       </div>
 
       {/* Today's Progress */}
-      <div className="mb-8">
+      <div className="mb-8 animate-slide-up stagger-3">
         <p className="text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-4">
           TODAY&apos;S PROGRESS
         </p>
-        <div className="bg-white rounded-lg p-6 border border-border flex items-center">
+        <div className="bg-white rounded-lg p-6 border border-border flex items-center shadow-sm">
           <div className="mr-6 text-center">
             <p
               className={`text-4xl leading-tight ${completedShifts === 2 ? "text-success" : "text-ink"}`}
@@ -275,7 +275,7 @@ export function HomeTab() {
             <p className="text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-4">
               UPCOMING APPOINTMENT
             </p>
-            <div className="bg-white rounded-lg p-6 border border-border border-l-[3px] border-l-accent flex items-center">
+            <div className="bg-white rounded-lg p-6 border border-border border-l-[3px] border-l-accent flex items-center shadow-sm">
               <div className="flex-1">
                 <p
                   className="text-lg text-ink mb-1"

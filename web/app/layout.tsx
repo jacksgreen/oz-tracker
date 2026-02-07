@@ -14,6 +14,7 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: "Dog Duty",
   description: "Share the work of caring for your dog",
+  viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
 };
 
 export default function RootLayout({

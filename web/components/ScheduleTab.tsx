@@ -121,7 +121,7 @@ export function ScheduleTab() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="mb-2">
+      <div className="mb-2 animate-slide-up">
         <p className="text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-1">
           PLAN AHEAD
         </p>
@@ -161,7 +161,7 @@ export function ScheduleTab() {
       </div>
 
       {/* Schedule Grid */}
-      <div className="border border-border rounded bg-white p-2 mb-6">
+      <div className="border border-border rounded-lg bg-white p-2 mb-6 shadow-sm animate-slide-up stagger-1">
         {/* Day Headers */}
         <div className="grid grid-cols-[48px_repeat(7,1fr)] gap-0.5 mb-2">
           <div />

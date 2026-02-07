@@ -180,7 +180,7 @@ export function HealthTab() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 animate-slide-up">
         <h1
           className="text-3xl text-ink"
           style={{ fontFamily: "var(--font-instrument-serif)" }}
@@ -189,7 +189,7 @@ export function HealthTab() {
         </h1>
         <button
           onClick={() => setShowAddModal(true)}
-          className="w-11 h-11 rounded-full bg-ink flex items-center justify-center hover:bg-ink-light transition-colors cursor-pointer"
+          className="w-11 h-11 rounded-full bg-ink flex items-center justify-center hover:bg-ink-light hover:shadow-md transition-all cursor-pointer shadow-sm"
         >
           <IoAdd size={22} className="text-cream" />
         </button>

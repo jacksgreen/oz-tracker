@@ -64,7 +64,7 @@ export function HouseholdTab() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="text-center py-6 mb-8">
+      <div className="text-center py-6 mb-8 animate-slide-up">
         <h1
           className="text-4xl text-ink mb-1"
           style={{

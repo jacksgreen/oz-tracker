@@ -29,13 +29,7 @@
     sans-serif;
 }
 
-/* Base styles */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
+/* Base styles - Tailwind v4 preflight handles box-sizing/margin/padding reset */
 body {
   font-family: var(--font-sans);
   background-color: var(--color-cream);
@@ -56,14 +50,53 @@ body {
   border-radius: 3px;
 }
 
-/* Focus styles */
+/* Focus styles - accessible focus ring */
 input:focus,
 textarea:focus {
   outline: none;
 }
+input:focus-visible,
+textarea:focus-visible {
+  border-color: var(--color-accent-dark) !important;
+  box-shadow: 0 1px 0 0 var(--color-accent-dark);
+}
 
-/* Transition utility */
-.transition-colors {
-  transition: color 0.15s ease, background-color 0.15s ease,
-    border-color 0.15s ease;
+/* Entry animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out both;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.45s ease-out both;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.35s ease-out both;
+}
+
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+
+/* Tab content transition */
+.tab-content {
+  animation: fadeIn 0.25s ease-out;
 }

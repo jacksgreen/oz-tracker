@@ -86,7 +86,7 @@ export function AppShell() {
 
       {/* Main content */}
       <main className="flex-1 pb-20 md:pb-0 overflow-y-auto">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto tab-content" key={activeTab}>
           {activeTab === "home" && <HomeTab />}
           {activeTab === "schedule" && <ScheduleTab />}
           {activeTab === "health" && <HealthTab />}
@@ -95,7 +95,7 @@ export function AppShell() {
       </main>
 
       {/* Mobile bottom tabs */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-border flex">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-border flex" style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id;
           const Icon = isActive ? tab.icon : tab.iconOutline;
@@ -103,9 +103,8 @@ export function AppShell() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex flex-col items-center pt-2 pb-5 gap-1 cursor-pointer ${
-                isActive ? "text-ink" : "text-ink-faint"
-              }`}
+              className={`flex-1 flex flex-col items-center gap-1 cursor-pointer transition-colors`}
+              style={{ paddingTop: "8px", paddingBottom: "4px", color: isActive ? "var(--color-ink)" : "var(--color-ink-faint)" }}
             >
               <Icon size={22} />
               <span className="text-[10px] font-medium tracking-[1.2px]">
