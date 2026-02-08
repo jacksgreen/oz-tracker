@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useCurrentUser } from "@/context/AuthContext";
+import { SlideUp } from "./ui/motion";
 import {
   IoSunny,
   IoMoon,
@@ -181,7 +182,7 @@ export function HomeTab() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8 animate-slide-up">
+      <SlideUp className="flex items-center justify-between mb-8">
         <div>
           <p className="text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-1.5">
             {getGreeting()}
@@ -204,7 +205,7 @@ export function HomeTab() {
             {household.dogName.charAt(0).toUpperCase()}
           </span>
         </div>
-      </div>
+      </SlideUp>
 
       {/* Today's Shifts */}
       <div className="space-y-4 mb-8">
@@ -219,14 +220,14 @@ export function HomeTab() {
           </>
         ) : (
           <>
-            <div className="animate-slide-up stagger-1">{renderShiftCard("am", amShift)}</div>
-            <div className="animate-slide-up stagger-2">{renderShiftCard("pm", pmShift)}</div>
+            <SlideUp delay={0.05}>{renderShiftCard("am", amShift)}</SlideUp>
+            <SlideUp delay={0.1}>{renderShiftCard("pm", pmShift)}</SlideUp>
           </>
         )}
       </div>
 
       {/* Today's Progress */}
-      <div className="mb-8 animate-slide-up stagger-3">
+      <SlideUp delay={0.15} className="mb-8">
         <p className="text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-4">
           TODAY&apos;S PROGRESS
         </p>
@@ -254,7 +255,7 @@ export function HomeTab() {
             <IoRibbon size={24} className="text-success ml-2" />
           )}
         </div>
-      </div>
+      </SlideUp>
 
       {/* Upcoming Appointment */}
       {upcomingAppointments === undefined ? (

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useCurrentUser } from "@/context/AuthContext";
-import { Modal, FullModal } from "./Modal";
+import { Dialog, DialogContent } from "./ui/dialog";
+import { SlideUp } from "./ui/motion";
 import type { Id } from "../convex/_generated/dataModel";
 import {
   IoAdd,
@@ -177,7 +178,7 @@ export function HealthTab() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8 animate-slide-up">
+      <SlideUp className="flex items-center justify-between mb-8">
         <h1
           className="text-3xl text-ink"
           style={{ fontFamily: "var(--font-instrument-serif)" }}
@@ -190,7 +191,7 @@ export function HealthTab() {
         >
           <IoAdd size={22} className="text-cream" />
         </button>
-      </div>
+      </SlideUp>
 
       {/* Recurring Care */}
       <div className="mb-8">
@@ -425,202 +426,200 @@ export function HealthTab() {
         </div>
       )}
 
-      {/* Add Appointment Modal */}
-      <FullModal
-        visible={showAddModal}
-        onClose={() => setShowAddModal(false)}
-      >
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <button
-            onClick={() => setShowAddModal(false)}
-            className="text-[15px] text-ink-muted cursor-pointer"
-          >
-            Cancel
-          </button>
-          <h3
-            className="text-[17px] text-ink"
-            style={{ fontFamily: "var(--font-instrument-serif)" }}
-          >
-            New Appointment
-          </h3>
-          <button
-            onClick={handleAddAppointment}
-            disabled={isSubmitting || !title.trim()}
-            className="text-[15px] font-semibold text-ink disabled:text-ink-faint cursor-pointer"
-          >
-            {isSubmitting ? "Saving..." : "Save"}
-          </button>
-        </div>
-        <div className="p-6 overflow-y-auto flex-1">
-          <div className="mb-8">
-            <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
-              APPOINTMENT TITLE
-            </label>
-            <input
-              type="text"
-              placeholder="e.g., Annual Checkup"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full border-b border-border-dark bg-transparent py-4 text-base text-ink placeholder:text-ink-faint"
-            />
+      {/* Add Appointment Dialog */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent showCloseButton={false} open={showAddModal}>
+          <div className="flex items-center justify-between p-6 border-b border-border">
+            <button
+              onClick={() => setShowAddModal(false)}
+              className="text-[15px] text-ink-muted cursor-pointer"
+            >
+              Cancel
+            </button>
+            <h3
+              className="text-[17px] text-ink"
+              style={{ fontFamily: "var(--font-instrument-serif)" }}
+            >
+              New Appointment
+            </h3>
+            <button
+              onClick={handleAddAppointment}
+              disabled={isSubmitting || !title.trim()}
+              className="text-[15px] font-semibold text-ink disabled:text-ink-faint cursor-pointer"
+            >
+              {isSubmitting ? "Saving..." : "Save"}
+            </button>
           </div>
-
-          <div className="mb-8">
-            <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
-              WHEN
-            </label>
-            <div className="flex gap-2 mb-4">
-              {[
-                { label: "Today", days: 0 },
-                { label: "Tomorrow", days: 1 },
-                { label: "In 1 Week", days: 7 },
-              ].map((opt) => (
-                <button
-                  key={opt.days}
-                  onClick={() => setQuickDate(opt.days)}
-                  className="flex-1 py-2 px-4 border border-border-dark rounded text-sm font-medium text-ink-muted text-center hover:bg-cream-dark transition-colors cursor-pointer"
-                >
-                  {opt.label}
-                </button>
-              ))}
+          <div className="p-6 overflow-y-auto flex-1">
+            <div className="mb-8">
+              <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
+                APPOINTMENT TITLE
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., Annual Checkup"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full border-b border-border-dark bg-transparent py-4 text-base text-ink placeholder:text-ink-faint"
+              />
             </div>
-            <div className="flex items-center gap-2 py-2">
-              <IoCalendarOutline size={16} className="text-ink-muted" />
-              <span className="text-sm font-medium text-ink">
-                {formatDate(selectedDate.getTime())} at{" "}
-                {formatTime(selectedDate.getTime())}
-              </span>
+
+            <div className="mb-8">
+              <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
+                WHEN
+              </label>
+              <div className="flex gap-2 mb-4">
+                {[
+                  { label: "Today", days: 0 },
+                  { label: "Tomorrow", days: 1 },
+                  { label: "In 1 Week", days: 7 },
+                ].map((opt) => (
+                  <button
+                    key={opt.days}
+                    onClick={() => setQuickDate(opt.days)}
+                    className="flex-1 py-2 px-4 border border-border-dark rounded text-sm font-medium text-ink-muted text-center hover:bg-cream-dark transition-colors cursor-pointer"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 py-2">
+                <IoCalendarOutline size={16} className="text-ink-muted" />
+                <span className="text-sm font-medium text-ink">
+                  {formatDate(selectedDate.getTime())} at{" "}
+                  {formatTime(selectedDate.getTime())}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div className="mb-8">
-            <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
-              LOCATION (OPTIONAL)
-            </label>
-            <input
-              type="text"
-              placeholder="e.g., Happy Paws Vet Clinic"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="w-full border-b border-border-dark bg-transparent py-4 text-base text-ink placeholder:text-ink-faint"
-            />
-          </div>
+            <div className="mb-8">
+              <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
+                LOCATION (OPTIONAL)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., Happy Paws Vet Clinic"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="w-full border-b border-border-dark bg-transparent py-4 text-base text-ink placeholder:text-ink-faint"
+              />
+            </div>
 
-          <div className="mb-8">
-            <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
-              NOTES (OPTIONAL)
-            </label>
-            <textarea
-              placeholder="Any additional notes..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              className="w-full border-b border-border-dark bg-transparent py-4 text-base text-ink placeholder:text-ink-faint resize-none"
-            />
-          </div>
-        </div>
-      </FullModal>
-
-      {/* Add Recurring Event Modal */}
-      <FullModal
-        visible={showAddRecurringModal}
-        onClose={() => setShowAddRecurringModal(false)}
-      >
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <button
-            onClick={() => setShowAddRecurringModal(false)}
-            className="text-[15px] text-ink-muted cursor-pointer"
-          >
-            Cancel
-          </button>
-          <h3
-            className="text-[17px] text-ink"
-            style={{ fontFamily: "var(--font-instrument-serif)" }}
-          >
-            New Recurring Care
-          </h3>
-          <button
-            onClick={handleAddRecurringEvent}
-            disabled={isSubmitting || !recurringTitle.trim()}
-            className="text-[15px] font-semibold text-ink disabled:text-ink-faint cursor-pointer"
-          >
-            {isSubmitting ? "Saving..." : "Save"}
-          </button>
-        </div>
-        <div className="p-6 overflow-y-auto flex-1">
-          <div className="mb-8">
-            <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
-              WHAT NEEDS TO BE DONE?
-            </label>
-            <input
-              type="text"
-              placeholder="e.g., Flea Medicine, Heartworm Pill"
-              value={recurringTitle}
-              onChange={(e) => setRecurringTitle(e.target.value)}
-              className="w-full border-b border-border-dark bg-transparent py-4 text-base text-ink placeholder:text-ink-faint"
-            />
-          </div>
-
-          <div className="mb-8">
-            <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
-              HOW OFTEN?
-            </label>
-            <div className="space-y-2">
-              {INTERVAL_OPTIONS.map((option) => (
-                <button
-                  key={option.days}
-                  onClick={() => setSelectedInterval(option.days)}
-                  className={`w-full py-4 px-6 border rounded text-left text-[15px] font-medium text-ink transition-colors cursor-pointer ${
-                    selectedInterval === option.days
-                      ? "border-ink font-semibold"
-                      : "border-border hover:border-border-dark"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
+            <div className="mb-8">
+              <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
+                NOTES (OPTIONAL)
+              </label>
+              <textarea
+                placeholder="Any additional notes..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                className="w-full border-b border-border-dark bg-transparent py-4 text-base text-ink placeholder:text-ink-faint resize-none"
+              />
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
 
-          <div className="mb-8">
-            <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
-              NOTES (OPTIONAL)
-            </label>
-            <textarea
-              placeholder="Any additional notes..."
-              value={recurringNotes}
-              onChange={(e) => setRecurringNotes(e.target.value)}
-              rows={3}
-              className="w-full border-b border-border-dark bg-transparent py-4 text-base text-ink placeholder:text-ink-faint resize-none"
-            />
+      {/* Add Recurring Event Dialog */}
+      <Dialog open={showAddRecurringModal} onOpenChange={setShowAddRecurringModal}>
+        <DialogContent showCloseButton={false} open={showAddRecurringModal}>
+          <div className="flex items-center justify-between p-6 border-b border-border">
+            <button
+              onClick={() => setShowAddRecurringModal(false)}
+              className="text-[15px] text-ink-muted cursor-pointer"
+            >
+              Cancel
+            </button>
+            <h3
+              className="text-[17px] text-ink"
+              style={{ fontFamily: "var(--font-instrument-serif)" }}
+            >
+              New Recurring Care
+            </h3>
+            <button
+              onClick={handleAddRecurringEvent}
+              disabled={isSubmitting || !recurringTitle.trim()}
+              className="text-[15px] font-semibold text-ink disabled:text-ink-faint cursor-pointer"
+            >
+              {isSubmitting ? "Saving..." : "Save"}
+            </button>
           </div>
+          <div className="p-6 overflow-y-auto flex-1">
+            <div className="mb-8">
+              <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
+                WHAT NEEDS TO BE DONE?
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., Flea Medicine, Heartworm Pill"
+                value={recurringTitle}
+                onChange={(e) => setRecurringTitle(e.target.value)}
+                className="w-full border-b border-border-dark bg-transparent py-4 text-base text-ink placeholder:text-ink-faint"
+              />
+            </div>
 
-          <div>
-            <p className="text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
-              QUICK ADD
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { title: "Flea Medicine", interval: 30 },
-                { title: "Heartworm Pill", interval: 30 },
-                { title: "Nail Trim", interval: 14 },
-                { title: "Ear Cleaning", interval: 7 },
-              ].map((s) => (
-                <button
-                  key={s.title}
-                  onClick={() => {
-                    setRecurringTitle(s.title);
-                    setSelectedInterval(s.interval);
-                  }}
-                  className="py-2 px-4 border border-border-dark rounded-full text-sm font-medium text-ink-muted hover:bg-cream-dark transition-colors cursor-pointer"
-                >
-                  {s.title}
-                </button>
-              ))}
+            <div className="mb-8">
+              <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
+                HOW OFTEN?
+              </label>
+              <div className="space-y-2">
+                {INTERVAL_OPTIONS.map((option) => (
+                  <button
+                    key={option.days}
+                    onClick={() => setSelectedInterval(option.days)}
+                    className={`w-full py-4 px-6 border rounded text-left text-[15px] font-medium text-ink transition-colors cursor-pointer ${
+                      selectedInterval === option.days
+                        ? "border-ink font-semibold"
+                        : "border-border hover:border-border-dark"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
+                NOTES (OPTIONAL)
+              </label>
+              <textarea
+                placeholder="Any additional notes..."
+                value={recurringNotes}
+                onChange={(e) => setRecurringNotes(e.target.value)}
+                rows={3}
+                className="w-full border-b border-border-dark bg-transparent py-4 text-base text-ink placeholder:text-ink-faint resize-none"
+              />
+            </div>
+
+            <div>
+              <p className="text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-2">
+                QUICK ADD
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { title: "Flea Medicine", interval: 30 },
+                  { title: "Heartworm Pill", interval: 30 },
+                  { title: "Nail Trim", interval: 14 },
+                  { title: "Ear Cleaning", interval: 7 },
+                ].map((s) => (
+                  <button
+                    key={s.title}
+                    onClick={() => {
+                      setRecurringTitle(s.title);
+                      setSelectedInterval(s.interval);
+                    }}
+                    className="py-2 px-4 border border-border-dark rounded-full text-sm font-medium text-ink-muted hover:bg-cream-dark transition-colors cursor-pointer"
+                  >
+                    {s.title}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      </FullModal>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

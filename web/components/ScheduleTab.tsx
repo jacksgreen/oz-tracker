@@ -4,7 +4,14 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useCurrentUser } from "@/context/AuthContext";
-import { Modal } from "./Modal";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from "./ui/drawer";
+import { SlideUp } from "./ui/motion";
 import {
   IoSunny,
   IoMoon,
@@ -118,7 +125,7 @@ export function ScheduleTab() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="mb-2 animate-slide-up">
+      <SlideUp className="mb-2">
         <p className="text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-1">
           PLAN AHEAD
         </p>
@@ -128,7 +135,7 @@ export function ScheduleTab() {
         >
           Schedule
         </h1>
-      </div>
+      </SlideUp>
 
       {/* Week Navigation */}
       <div className="flex items-center justify-between border border-border rounded px-4 py-2 my-4">
@@ -158,7 +165,7 @@ export function ScheduleTab() {
       </div>
 
       {/* Schedule Grid */}
-      <div className="border border-border rounded-lg bg-white p-2 mb-6 shadow-sm animate-slide-up stagger-1">
+      <SlideUp delay={0.05} className="border border-border rounded-lg bg-white p-2 mb-6 shadow-sm">
         {/* Day Headers */}
         <div className="grid grid-cols-[48px_repeat(7,1fr)] gap-0.5 mb-2">
           <div />
@@ -255,7 +262,7 @@ export function ScheduleTab() {
             );
           })
         )}
-      </div>
+      </SlideUp>
 
       {/* Shift Explanation */}
       <div className="mb-6 pb-6 border-b border-border">
@@ -312,94 +319,96 @@ export function ScheduleTab() {
         Tap any cell to assign a shift.
       </p>
 
-      {/* Assignment Modal */}
-      <Modal visible={modalVisible} onClose={() => setModalVisible(false)}>
-        {selectedShift && selectedDate && (
-          <div className="p-6">
-            <div className="mb-6 pb-4 border-b border-border">
-              <h3
-                className="text-xl text-ink mb-1"
-                style={{ fontFamily: "var(--font-instrument-serif)" }}
-              >
-                {SHIFT_CONFIG[selectedShift].label}
-              </h3>
-              <p className="text-sm text-ink-muted">
-                {selectedDate.toLocaleDateString("en-US", {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                })}
+      {/* Assignment Drawer */}
+      <Drawer open={modalVisible} onOpenChange={setModalVisible}>
+        <DrawerContent>
+          {selectedShift && selectedDate && (
+            <div className="p-6">
+              <DrawerHeader className="p-0 mb-6 pb-4 border-b border-border">
+                <DrawerTitle
+                  className="text-xl text-ink"
+                  style={{ fontFamily: "var(--font-instrument-serif)" }}
+                >
+                  {SHIFT_CONFIG[selectedShift].label}
+                </DrawerTitle>
+                <DrawerDescription className="text-sm text-ink-muted">
+                  {selectedDate.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </DrawerDescription>
+              </DrawerHeader>
+
+              <p className="text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-4">
+                ASSIGN TO
               </p>
-            </div>
 
-            <p className="text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-4">
-              ASSIGN TO
-            </p>
-
-            <div className="space-y-2">
-              {members?.map((member) => {
-                const currentEntry = getShiftForDateAndType(
-                  selectedDate,
-                  selectedShift
-                );
-                const isAssigned =
-                  currentEntry?.assignedUserId === member._id;
-                return (
-                  <button
-                    key={member._id}
-                    onClick={() => handleAssign(member._id, member.name)}
-                    className={`w-full flex items-center gap-4 p-4 rounded-lg border transition-colors cursor-pointer ${
-                      isAssigned
-                        ? "border-ink"
-                        : "border-border hover:border-border-dark"
-                    }`}
-                  >
-                    <div
-                      className={`w-10 h-10 rounded-full border flex items-center justify-center ${
+              <div className="space-y-2">
+                {members?.map((member) => {
+                  const currentEntry = getShiftForDateAndType(
+                    selectedDate,
+                    selectedShift
+                  );
+                  const isAssigned =
+                    currentEntry?.assignedUserId === member._id;
+                  return (
+                    <button
+                      key={member._id}
+                      onClick={() => handleAssign(member._id, member.name)}
+                      className={`w-full flex items-center gap-4 p-4 rounded-lg border transition-colors cursor-pointer ${
                         isAssigned
-                          ? "bg-ink border-ink"
-                          : "bg-white border-border-dark"
+                          ? "border-ink"
+                          : "border-border hover:border-border-dark"
                       }`}
                     >
-                      <span
-                        className={`${isAssigned ? "text-cream" : "text-ink"}`}
-                        style={{
-                          fontFamily: "var(--font-instrument-serif)",
-                          fontSize: "16px",
-                        }}
+                      <div
+                        className={`w-10 h-10 rounded-full border flex items-center justify-center ${
+                          isAssigned
+                            ? "bg-ink border-ink"
+                            : "bg-white border-border-dark"
+                        }`}
                       >
-                        {getInitials(member.name)}
+                        <span
+                          className={`${isAssigned ? "text-cream" : "text-ink"}`}
+                          style={{
+                            fontFamily: "var(--font-instrument-serif)",
+                            fontSize: "16px",
+                          }}
+                        >
+                          {getInitials(member.name)}
+                        </span>
+                      </div>
+                      <span
+                        className={`flex-1 text-[15px] text-left ${isAssigned ? "font-semibold" : "font-medium"} text-ink`}
+                      >
+                        {member.name}
+                        {member._id === user?._id && " (You)"}
                       </span>
-                    </div>
-                    <span
-                      className={`flex-1 text-[15px] text-left ${isAssigned ? "font-semibold" : "font-medium"} text-ink`}
-                    >
-                      {member.name}
-                      {member._id === user?._id && " (You)"}
-                    </span>
-                    {isAssigned && (
-                      <IoCheckmark size={20} className="text-ink" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                      {isAssigned && (
+                        <IoCheckmark size={20} className="text-ink" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
 
-            {selectedDate &&
-              selectedShift &&
-              getShiftForDateAndType(selectedDate, selectedShift) &&
-              !getShiftForDateAndType(selectedDate, selectedShift)
-                ?.completed && (
-                <button
-                  onClick={handleClear}
-                  className="w-full mt-6 py-4 text-center text-sm text-ink-faint cursor-pointer"
-                >
-                  Clear Assignment
-                </button>
-              )}
-          </div>
-        )}
-      </Modal>
+              {selectedDate &&
+                selectedShift &&
+                getShiftForDateAndType(selectedDate, selectedShift) &&
+                !getShiftForDateAndType(selectedDate, selectedShift)
+                  ?.completed && (
+                  <button
+                    onClick={handleClear}
+                    className="w-full mt-6 py-4 text-center text-sm text-ink-faint cursor-pointer"
+                  >
+                    Clear Assignment
+                  </button>
+                )}
+            </div>
+          )}
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

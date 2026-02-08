@@ -5,6 +5,7 @@ import { useAuth, useSignIn } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useCurrentUser } from "@/context/AuthContext";
+import { SlideUp, SlideInLeft } from "./ui/motion";
 import {
   IoArrowForward,
   IoArrowBack,
@@ -103,7 +104,7 @@ export function AuthScreen() {
     <div className="min-h-screen bg-cream flex items-center justify-center p-6">
       <div className="w-full max-w-[420px]">
         {step === "welcome" && (
-          <div className="flex flex-col gap-7 sm:gap-10 md:gap-12 animate-slide-up">
+          <SlideUp className="flex flex-col gap-7 sm:gap-10 md:gap-12">
             <div className="text-center">
               <h1 className="text-5xl text-ink font-serif -tracking-[1px] mb-3">
                 Dog Duty
@@ -115,7 +116,7 @@ export function AuthScreen() {
 
             <button
               onClick={() => setStep("signin")}
-              className="w-full h-13 bg-ink text-cream rounded-lg flex items-center justify-center gap-2 text-sm font-medium tracking-wider uppercase hover:bg-ink-light transition-colors cursor-pointer animate-slide-up stagger-2"
+              className="w-full h-13 bg-ink text-cream rounded-lg flex items-center justify-center gap-2 text-sm font-medium tracking-wider uppercase hover:bg-ink-light transition-colors cursor-pointer"
             >
               GET STARTED
               <IoArrowForward size={18} />
@@ -136,7 +137,7 @@ export function AuthScreen() {
                   text: "Track vet visits, flea meds, and recurring care",
                 },
               ].map(({ icon: Icon, text }, i) => (
-                <div key={text} className={`flex items-center gap-4 animate-slide-up stagger-${i + 3}`}>
+                <div key={text} className="flex items-center gap-4">
                   <div className="w-9 h-9 rounded-full bg-parchment flex items-center justify-center shrink-0">
                     <Icon size={17} className="text-ink-muted" />
                   </div>
@@ -146,11 +147,11 @@ export function AuthScreen() {
                 </div>
               ))}
             </div>
-          </div>
+          </SlideUp>
         )}
 
         {step === "signin" && (
-          <div className="animate-slide-in-left flex flex-col gap-6 sm:gap-8 md:gap-10">
+          <SlideInLeft className="flex flex-col gap-6 sm:gap-8 md:gap-10">
             <button
               onClick={() => setStep("welcome")}
               className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-cream-dark transition-colors cursor-pointer -ml-2"
@@ -190,11 +191,11 @@ export function AuthScreen() {
                 </>
               )}
             </button>
-          </div>
+          </SlideInLeft>
         )}
 
         {step === "household-choice" && (
-          <div className="animate-slide-up flex flex-col gap-6 sm:gap-8 md:gap-10">
+          <SlideUp className="flex flex-col gap-6 sm:gap-8 md:gap-10">
             <div>
               <h2 className="text-3xl text-ink font-serif mb-2">
                 Set Up Your Household
@@ -207,7 +208,7 @@ export function AuthScreen() {
             <div className="flex flex-col gap-4">
               <button
                 onClick={() => setStep("create-household")}
-                className="w-full flex items-center p-6 bg-white border border-border rounded-lg hover:border-border-dark hover:shadow-sm transition-all text-left cursor-pointer animate-slide-up stagger-1"
+                className="w-full flex items-center p-6 bg-white border border-border rounded-lg hover:border-border-dark hover:shadow-sm transition-all text-left cursor-pointer"
               >
                 <div className="flex-1">
                   <p className="text-ink font-medium mb-1">
@@ -222,7 +223,7 @@ export function AuthScreen() {
 
               <button
                 onClick={() => setStep("join-household")}
-                className="w-full flex items-center p-6 bg-white border border-border rounded-lg hover:border-border-dark hover:shadow-sm transition-all text-left cursor-pointer animate-slide-up stagger-2"
+                className="w-full flex items-center p-6 bg-white border border-border rounded-lg hover:border-border-dark hover:shadow-sm transition-all text-left cursor-pointer"
               >
                 <div className="flex-1">
                   <p className="text-ink font-medium mb-1">
@@ -235,11 +236,11 @@ export function AuthScreen() {
                 <IoChevronForward size={20} className="text-ink-muted" />
               </button>
             </div>
-          </div>
+          </SlideUp>
         )}
 
         {step === "create-household" && (
-          <div className="animate-slide-in-left flex flex-col gap-6 sm:gap-8 md:gap-10">
+          <SlideInLeft className="flex flex-col gap-6 sm:gap-8 md:gap-10">
             <button
               onClick={() => setStep("household-choice")}
               className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-cream-dark transition-colors cursor-pointer -ml-2"
@@ -343,11 +344,11 @@ export function AuthScreen() {
                 </button>
               </>
             )}
-          </div>
+          </SlideInLeft>
         )}
 
         {step === "join-household" && (
-          <div className="animate-slide-in-left flex flex-col gap-6 sm:gap-8 md:gap-10">
+          <SlideInLeft className="flex flex-col gap-6 sm:gap-8 md:gap-10">
             <button
               onClick={() => setStep("household-choice")}
               className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-cream-dark transition-colors cursor-pointer -ml-2"
@@ -397,7 +398,7 @@ export function AuthScreen() {
                 </>
               )}
             </button>
-          </div>
+          </SlideInLeft>
         )}
       </div>
     </div>

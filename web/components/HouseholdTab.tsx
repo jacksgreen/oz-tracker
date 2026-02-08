@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { useClerk } from "@clerk/nextjs";
 import { api } from "../convex/_generated/api";
 import { useCurrentUser } from "@/context/AuthContext";
+import { SlideUp } from "./ui/motion";
 import { IoShareOutline, IoCheckmark } from "react-icons/io5";
 
 const MEMBER_COLORS = [
@@ -66,7 +67,7 @@ export function HouseholdTab() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="text-center py-6 mb-8 animate-slide-up">
+      <SlideUp className="text-center py-6 mb-8">
         <h1
           className="text-4xl text-ink mb-1"
           style={{
@@ -79,7 +80,7 @@ export function HouseholdTab() {
         <p className="text-sm text-ink-muted">
           Taking care of {household.dogName} together
         </p>
-      </div>
+      </SlideUp>
 
       {/* Invite Code */}
       <div className="mb-8 pb-8 border-b border-border">

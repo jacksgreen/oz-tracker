@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TabTransition } from "./ui/motion";
 import {
   IoHome,
   IoHomeOutline,
@@ -86,11 +87,13 @@ export function AppShell() {
 
       {/* Main content */}
       <main className="flex-1 pb-20 md:pb-0 overflow-y-auto">
-        <div className="max-w-2xl mx-auto tab-content" key={activeTab}>
-          {activeTab === "home" && <HomeTab />}
-          {activeTab === "schedule" && <ScheduleTab />}
-          {activeTab === "health" && <HealthTab />}
-          {activeTab === "household" && <HouseholdTab />}
+        <div className="max-w-2xl mx-auto">
+          <TabTransition tabKey={activeTab}>
+            {activeTab === "home" && <HomeTab />}
+            {activeTab === "schedule" && <ScheduleTab />}
+            {activeTab === "health" && <HealthTab />}
+            {activeTab === "household" && <HouseholdTab />}
+          </TabTransition>
         </div>
       </main>
 
