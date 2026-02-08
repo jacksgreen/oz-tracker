@@ -14,17 +14,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { useAuth } from '../../context/AuthContext';
+import { useCurrentUser } from '../../context/AuthContext';
+import { useClerk } from '@clerk/clerk-expo';
 import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
 
 export default function HouseholdScreen() {
-  const { user, household, signOut } = useAuth();
+  const { user, household } = useCurrentUser();
+  const { signOut } = useClerk();
   const [refreshing, setRefreshing] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const members = useQuery(
     api.households.getMembers,
-    household ? { householdId: household._id } : 'skip'
+    household ? {} : 'skip'
   );
 
   const onRefresh = async () => {

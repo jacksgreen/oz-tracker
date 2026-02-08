@@ -1,13 +1,14 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { useAuth as useClerkAuth } from "@clerk/clerk-expo";
 import { api } from "../convex/_generated/api";
 import { Id } from "../convex/_generated/dataModel";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface User {
   _id: Id<"users">;
   name: string;
   email: string;
+  clerkId?: string;
   householdId?: Id<"households">;
 }
 
@@ -18,116 +19,41 @@ interface Household {
   inviteCode: string;
 }
 
-interface AuthContextType {
-  user: User | null;
-  household: Household | null;
-  isLoading: boolean;
-  signIn: (email: string, name: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  createHousehold: (name: string, dogName: string) => Promise<string>;
-  joinHousehold: (inviteCode: string) => Promise<void>;
+/**
+ * Calls users.store once after Clerk sign-in to upsert the Convex user.
+ */
+export function useStoreUser() {
+  const { isSignedIn } = useClerkAuth();
+  const storeUser = useMutation(api.users.store);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    storeUser();
+  }, [isSignedIn, storeUser]);
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const USER_STORAGE_KEY = "@dog_duty_user";
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+/**
+ * Returns the current user and household from Convex.
+ * Both queries are auth-guarded server-side (no args needed).
+ */
+export function useCurrentUser() {
+  const { isSignedIn, isLoaded } = useClerkAuth();
 
   const user = useQuery(
-    api.users.getByEmail,
-    userEmail ? { email: userEmail } : "skip"
-  );
+    api.users.get,
+    isSignedIn ? {} : "skip"
+  ) as User | null | undefined;
 
   const household = useQuery(
     api.households.get,
-    user?.householdId ? { householdId: user.householdId } : "skip"
-  );
+    isSignedIn ? {} : "skip"
+  ) as Household | null | undefined;
 
-  const createUser = useMutation(api.users.create);
-  const createHouseholdMutation = useMutation(api.households.create);
-  const joinHouseholdMutation = useMutation(api.households.join);
+  const isLoading = !isLoaded || (isSignedIn && user === undefined);
 
-  useEffect(() => {
-    loadStoredUser();
-  }, []);
-
-  async function loadStoredUser() {
-    try {
-      const stored = await AsyncStorage.getItem(USER_STORAGE_KEY);
-      if (stored) {
-        const { email } = JSON.parse(stored);
-        setUserEmail(email);
-      }
-    } catch (error) {
-      console.error("Failed to load stored user:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function signIn(email: string, name: string) {
-    await createUser({ email, name });
-    await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify({ email }));
-    setUserEmail(email);
-  }
-
-  async function signOut() {
-    await AsyncStorage.removeItem(USER_STORAGE_KEY);
-    setUserEmail(null);
-  }
-
-  async function createHousehold(name: string, dogName: string): Promise<string> {
-    if (!user) throw new Error("Must be signed in");
-
-    const result = await createHouseholdMutation({
-      name,
-      dogName,
-      userName: user.name,
-      userEmail: user.email,
-    });
-
-    return result.inviteCode;
-  }
-
-  async function joinHousehold(inviteCode: string) {
-    if (!user) throw new Error("Must be signed in");
-
-    await joinHouseholdMutation({
-      inviteCode,
-      userName: user.name,
-      userEmail: user.email,
-    });
-  }
-
-  // Determine if we're still loading:
-  // - isLoading: still loading from AsyncStorage
-  // - userEmail exists but user is undefined: Convex query is still loading
-  const isQueryLoading = userEmail !== null && user === undefined;
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user: user ?? null,
-        household: household ?? null,
-        isLoading: isLoading || isQueryLoading,
-        signIn,
-        signOut,
-        createHousehold,
-        joinHousehold,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  return {
+    user: user ?? null,
+    household: household ?? null,
+    isLoading,
+  };
 }

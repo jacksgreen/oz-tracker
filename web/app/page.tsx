@@ -1,13 +1,16 @@
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@clerk/nextjs";
+import { useStoreUser, useCurrentUser } from "@/context/AuthContext";
 import { AuthScreen } from "@/components/AuthScreen";
 import { AppShell } from "@/components/AppShell";
 
 export default function Page() {
-  const { user, household, isLoading } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
+  useStoreUser();
+  const { user, household, isLoading } = useCurrentUser();
 
-  if (isLoading) {
+  if (!isLoaded || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-cream">
         <div className="text-center animate-fade-in">
@@ -23,7 +26,7 @@ export default function Page() {
     );
   }
 
-  if (!user || !household) {
+  if (!isSignedIn || !user || !household) {
     return <AuthScreen />;
   }
 

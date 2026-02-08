@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,18 +12,25 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, useSSO } from '@clerk/clerk-expo';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { useCurrentUser } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
+import * as Linking from 'expo-linking';
 
 type AuthStep = 'welcome' | 'signin' | 'household-choice' | 'create-household' | 'join-household';
 
 export default function AuthScreen() {
   const router = useRouter();
-  const { signIn, createHousehold, joinHousehold, user, household } = useAuth();
+  const { isSignedIn } = useAuth();
+  const { startSSOFlow } = useSSO();
+  const { user, household } = useCurrentUser();
+
+  const createHouseholdMutation = useMutation(api.households.create);
+  const joinHouseholdMutation = useMutation(api.households.join);
 
   const [step, setStep] = useState<AuthStep>('welcome');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [householdName, setHouseholdName] = useState('');
   const [dogName, setDogName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
@@ -33,29 +40,31 @@ export default function AuthScreen() {
 
   // Redirect if already authenticated with household
   React.useEffect(() => {
-    if (user && household) {
+    if (isSignedIn && user && household) {
       router.replace('/(tabs)');
-    } else if (user && !household) {
+    } else if (isSignedIn && user && !household) {
       setStep('household-choice');
     }
-  }, [user, household]);
+  }, [isSignedIn, user, household]);
 
-  const handleSignIn = async () => {
-    if (!name.trim() || !email.trim()) {
-      setError('Please enter your name and email');
-      return;
-    }
+  const handleGoogleSignIn = useCallback(async () => {
     setIsLoading(true);
     setError('');
     try {
-      await signIn(email.trim().toLowerCase(), name.trim());
-      setStep('household-choice');
+      const { createdSessionId, setActive } = await startSSOFlow({
+        strategy: 'oauth_google',
+        redirectUrl: Linking.createURL('/(tabs)'),
+      });
+
+      if (createdSessionId) {
+        await setActive!({ session: createdSessionId });
+      }
     } catch (e) {
-      setError('Failed to sign in. Please try again.');
+      setError('Failed to sign in with Google. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [startSSOFlow]);
 
   const handleCreateHousehold = async () => {
     if (!householdName.trim() || !dogName.trim()) {
@@ -65,8 +74,11 @@ export default function AuthScreen() {
     setIsLoading(true);
     setError('');
     try {
-      const code = await createHousehold(householdName.trim(), dogName.trim());
-      setCreatedInviteCode(code);
+      const result = await createHouseholdMutation({
+        name: householdName.trim(),
+        dogName: dogName.trim(),
+      });
+      setCreatedInviteCode(result.inviteCode);
     } catch (e) {
       setError('Failed to create household. Please try again.');
     } finally {
@@ -82,7 +94,9 @@ export default function AuthScreen() {
     setIsLoading(true);
     setError('');
     try {
-      await joinHousehold(inviteCode.trim().toUpperCase());
+      await joinHouseholdMutation({
+        inviteCode: inviteCode.trim().toUpperCase(),
+      });
     } catch (e) {
       setError('Invalid invite code. Please check and try again.');
     } finally {
@@ -132,40 +146,13 @@ export default function AuthScreen() {
       </TouchableOpacity>
 
       <Text style={styles.stepTitle}>Welcome</Text>
-      <Text style={styles.stepSubtitle}>Let's get you set up</Text>
-
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>YOUR NAME</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your name"
-          placeholderTextColor={colors.text.muted}
-          value={name}
-          onChangeText={setName}
-          autoCapitalize="words"
-          autoCorrect={false}
-        />
-      </View>
-
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>EMAIL</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="your@email.com"
-          placeholderTextColor={colors.text.muted}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-      </View>
+      <Text style={styles.stepSubtitle}>Sign in to get started</Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <TouchableOpacity
         style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
-        onPress={handleSignIn}
+        onPress={handleGoogleSignIn}
         disabled={isLoading}
         activeOpacity={0.8}
       >
@@ -173,8 +160,8 @@ export default function AuthScreen() {
           <ActivityIndicator color={colors.text.inverse} />
         ) : (
           <>
-            <Text style={styles.primaryButtonText}>CONTINUE</Text>
-            <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
+            <Ionicons name="logo-google" size={18} color={colors.text.inverse} />
+            <Text style={styles.primaryButtonText}>CONTINUE WITH GOOGLE</Text>
           </>
         )}
       </TouchableOpacity>
@@ -401,7 +388,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
 
-  // Welcome screen — no emoji, typography-driven
+  // Welcome screen
   welcomeHeader: {
     marginTop: spacing.xxl,
     marginBottom: spacing.xl,
@@ -447,7 +434,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
 
-  // Inputs — underline style
+  // Inputs
   inputGroup: {
     marginBottom: spacing.lg,
   },
@@ -472,7 +459,7 @@ const styles = StyleSheet.create({
     letterSpacing: 8,
   },
 
-  // Buttons — ink background, uppercase tracked
+  // Buttons
   primaryButton: {
     height: 52,
     backgroundColor: colors.text.primary,
@@ -491,7 +478,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
 
-  // Choice cards — thin borders, no shadows
+  // Choice cards
   choiceCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -515,7 +502,7 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
 
-  // Success state — minimal
+  // Success state
   successContainer: {
     alignItems: 'center',
     paddingTop: spacing.xl,

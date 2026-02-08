@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { useAuth } from "@/context/AuthContext";
+import { useCurrentUser } from "@/context/AuthContext";
 import { Modal, FullModal } from "./Modal";
 import type { Id } from "../convex/_generated/dataModel";
 import {
@@ -26,7 +26,7 @@ const INTERVAL_OPTIONS = [
 ];
 
 export function HealthTab() {
-  const { user, household } = useAuth();
+  const { user, household } = useCurrentUser();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddRecurringModal, setShowAddRecurringModal] = useState(false);
   const [showPast, setShowPast] = useState(false);
@@ -45,15 +45,15 @@ export function HealthTab() {
 
   const upcomingAppointments = useQuery(
     api.appointments.getUpcoming,
-    household ? { householdId: household._id } : "skip"
+    household ? {} : "skip"
   );
   const allAppointments = useQuery(
     api.appointments.getAll,
-    household ? { householdId: household._id } : "skip"
+    household ? {} : "skip"
   );
   const repeatingEvents = useQuery(
     api.repeatingEvents.getAll,
-    household ? { householdId: household._id } : "skip"
+    household ? {} : "skip"
   );
 
   const addAppointment = useMutation(api.appointments.add);
@@ -70,12 +70,10 @@ export function HealthTab() {
     setIsSubmitting(true);
     try {
       await addAppointment({
-        householdId: household._id,
         title: title.trim(),
         date: selectedDate.getTime(),
         location: location.trim() || undefined,
         notes: notes.trim() || undefined,
-        actingUserId: user?._id,
       });
       setTitle("");
       setLocation("");
@@ -91,7 +89,7 @@ export function HealthTab() {
 
   const handleMarkComplete = (appointmentId: Id<"appointments">) => {
     if (confirm("Mark this appointment as completed?")) {
-      markComplete({ appointmentId, actingUserId: user?._id });
+      markComplete({ appointmentId });
     }
   };
 
@@ -108,7 +106,6 @@ export function HealthTab() {
       const now = new Date();
       now.setHours(0, 0, 0, 0);
       await addRepeatingEvent({
-        householdId: household._id,
         title: recurringTitle.trim(),
         intervalDays: selectedInterval,
         startDate: now.getTime(),
@@ -256,7 +253,6 @@ export function HealthTab() {
                       onClick={() =>
                         markEventDone({
                           eventId: event._id,
-                          actingUserId: user?._id,
                         })
                       }
                       className={`w-9 h-9 rounded-full border flex items-center justify-center transition-colors cursor-pointer ${

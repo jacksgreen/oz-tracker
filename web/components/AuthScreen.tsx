@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, useSignIn } from "@clerk/nextjs";
+import { useMutation } from "convex/react";
+import { api } from "../convex/_generated/api";
+import { useCurrentUser } from "@/context/AuthContext";
 import {
   IoArrowForward,
   IoArrowBack,
@@ -20,12 +23,17 @@ type AuthStep =
   | "join-household";
 
 export function AuthScreen() {
-  const { signIn, createHousehold, joinHousehold, user, household } = useAuth();
+  const { isSignedIn } = useAuth();
+  const { signIn, isLoaded: isSignInLoaded } = useSignIn();
+  const { user, household } = useCurrentUser();
 
-  // If user exists but no household, skip ahead to household-choice
-  const [step, setStep] = useState<AuthStep>(user ? "household-choice" : "welcome");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const createHouseholdMutation = useMutation(api.households.create);
+  const joinHouseholdMutation = useMutation(api.households.join);
+
+  // If signed in but no household, skip to household-choice
+  const [step, setStep] = useState<AuthStep>(
+    isSignedIn && user ? "household-choice" : "welcome"
+  );
   const [householdName, setHouseholdName] = useState("");
   const [dogName, setDogName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
@@ -33,19 +41,18 @@ export function AuthScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSignIn = async () => {
-    if (!name.trim() || !email.trim()) {
-      setError("Please enter your name and email");
-      return;
-    }
+  const handleGoogleSignIn = async () => {
+    if (!isSignInLoaded || !signIn) return;
     setIsLoading(true);
     setError("");
     try {
-      await signIn(email.trim().toLowerCase(), name.trim());
-      setStep("household-choice");
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: "/",
+      });
     } catch {
-      setError("Failed to sign in. Please try again.");
-    } finally {
+      setError("Failed to sign in with Google. Please try again.");
       setIsLoading(false);
     }
   };
@@ -58,8 +65,11 @@ export function AuthScreen() {
     setIsLoading(true);
     setError("");
     try {
-      const code = await createHousehold(householdName.trim(), dogName.trim());
-      setCreatedInviteCode(code);
+      const result = await createHouseholdMutation({
+        name: householdName.trim(),
+        dogName: dogName.trim(),
+      });
+      setCreatedInviteCode(result.inviteCode);
     } catch {
       setError("Failed to create household. Please try again.");
     } finally {
@@ -75,7 +85,9 @@ export function AuthScreen() {
     setIsLoading(true);
     setError("");
     try {
-      await joinHousehold(inviteCode.trim().toUpperCase());
+      await joinHouseholdMutation({
+        inviteCode: inviteCode.trim().toUpperCase(),
+      });
     } catch {
       setError("Invalid invite code. Please check and try again.");
     } finally {
@@ -151,54 +163,30 @@ export function AuthScreen() {
                 Welcome
               </h2>
               <p className="text-ink-muted text-[15px]">
-                Let&apos;s get you set up
+                Sign in to get started
               </p>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-3">
-                YOUR NAME
-              </label>
-              <input
-                type="text"
-                placeholder="Enter your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, () => {})}
-                className="w-full border-b border-border-dark bg-transparent text-base text-ink placeholder:text-ink-faint transition-colors py-3"
-                autoCapitalize="words"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-medium tracking-[1.5px] uppercase text-ink-muted mb-3">
-                EMAIL
-              </label>
-              <input
-                type="email"
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, handleSignIn)}
-                className="w-full border-b border-border-dark bg-transparent text-base text-ink placeholder:text-ink-faint transition-colors py-3"
-              />
-            </div>
-
             {error && (
-              <p className="text-error text-sm -mt-4">{error}</p>
+              <p className="text-error text-sm">{error}</p>
             )}
 
             <button
-              onClick={handleSignIn}
+              onClick={handleGoogleSignIn}
               disabled={isLoading}
-              className="w-full h-13 bg-ink text-cream rounded-lg flex items-center justify-center gap-2 text-sm font-medium tracking-wider uppercase hover:bg-ink-light transition-colors disabled:opacity-60 cursor-pointer"
+              className="w-full h-13 bg-ink text-cream rounded-lg flex items-center justify-center gap-3 text-sm font-medium tracking-wider uppercase hover:bg-ink-light transition-colors disabled:opacity-60 cursor-pointer"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-cream border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  CONTINUE
-                  <IoArrowForward size={18} />
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  CONTINUE WITH GOOGLE
                 </>
               )}
             </button>

@@ -3,13 +3,13 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Platform } from 'react-native';
 import { colors, hairline } from '../../lib/theme';
-import { useAuth } from '../../context/AuthContext';
+import { useCurrentUser } from '../../context/AuthContext';
 import { Redirect } from 'expo-router';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 export default function TabLayout() {
-  const { user, household, isLoading } = useAuth();
+  const { user, household, isLoading } = useCurrentUser();
 
   // Redirect to auth if not authenticated
   if (!isLoading && (!user || !household)) {

@@ -1,12 +1,15 @@
 import { Redirect } from 'expo-router';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@clerk/clerk-expo';
+import { useStoreUser, useCurrentUser } from '../context/AuthContext';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { colors } from '../lib/theme';
 
 export default function Index() {
-  const { user, household, isLoading } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
+  useStoreUser();
+  const { user, household, isLoading } = useCurrentUser();
 
-  if (isLoading) {
+  if (!isLoaded || isLoading) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.text.primary} />
@@ -14,7 +17,7 @@ export default function Index() {
     );
   }
 
-  if (!user || !household) {
+  if (!isSignedIn || !user || !household) {
     return <Redirect href="/auth" />;
   }
 

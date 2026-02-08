@@ -9,6 +9,7 @@
  */
 
 import type * as appointments from "../appointments.js";
+import type * as auth from "../auth.js";
 import type * as careShifts from "../careShifts.js";
 import type * as households from "../households.js";
 import type * as notifications from "../notifications.js";
@@ -23,6 +24,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   appointments: typeof appointments;
+  auth: typeof auth;
   careShifts: typeof careShifts;
   households: typeof households;
   notifications: typeof notifications;

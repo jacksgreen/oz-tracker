@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { useAuth } from '../../context/AuthContext';
+import { useCurrentUser } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, shadows, typography, fonts, hairline } from '../../lib/theme';
 
 // Get today's start-of-day timestamp in local timezone
@@ -50,19 +50,19 @@ const SHIFT_CONFIG: Record<ShiftType, ShiftConfig> = {
 };
 
 export default function HomeScreen() {
-  const { user, household } = useAuth();
+  const { user, household } = useCurrentUser();
   const [refreshing, setRefreshing] = useState(false);
 
   const todayTimestamp = getTodayTimestamp();
 
   const todayShifts = useQuery(
     api.careShifts.getToday,
-    household ? { householdId: household._id, clientDate: todayTimestamp } : 'skip'
+    household ? { clientDate: todayTimestamp } : 'skip'
   );
 
   const upcomingAppointments = useQuery(
     api.appointments.getUpcoming,
-    household ? { householdId: household._id } : 'skip'
+    household ? {} : 'skip'
   );
 
   const logShift = useMutation(api.careShifts.logNow);
@@ -80,9 +80,6 @@ export default function HomeScreen() {
     startOfDay.setHours(0, 0, 0, 0);
 
     await logShift({
-      householdId: household._id,
-      userId: user._id,
-      userName: user.name,
       type,
       clientDate: startOfDay.getTime(),
     });

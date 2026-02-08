@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { useAuth } from '../../context/AuthContext';
+import { useCurrentUser } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
 import { Id } from '../../convex/_generated/dataModel';
 
@@ -51,7 +51,7 @@ const SHIFT_CONFIG: Record<ShiftType, ShiftConfig> = {
 const SHIFT_ORDER: ShiftType[] = ['am', 'pm'];
 
 export default function ScheduleScreen() {
-  const { user, household } = useAuth();
+  const { user, household } = useCurrentUser();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedWeekOffset, setSelectedWeekOffset] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
@@ -82,13 +82,13 @@ export default function ScheduleScreen() {
   const careShifts = useQuery(
     api.careShifts.getByDateRange,
     household
-      ? { householdId: household._id, startDate: startTimestamp, endDate: endTimestamp }
+      ? { startDate: startTimestamp, endDate: endTimestamp }
       : 'skip'
   );
 
   const members = useQuery(
     api.households.getMembers,
-    household ? { householdId: household._id } : 'skip'
+    household ? {} : 'skip'
   );
 
   // Mutations for scheduling
@@ -117,12 +117,10 @@ export default function ScheduleScreen() {
     const dateTimestamp = new Date(selectedDate).setHours(0, 0, 0, 0);
 
     await scheduleShift({
-      householdId: household._id,
       assignedUserId: memberId,
       assignedUserName: memberName,
       type: selectedShift,
       date: dateTimestamp,
-      actingUserId: user?._id,
     });
 
     setModalVisible(false);
@@ -133,7 +131,6 @@ export default function ScheduleScreen() {
     const dateTimestamp = new Date(selectedDate).setHours(0, 0, 0, 0);
 
     await clearShiftAssignment({
-      householdId: household._id,
       date: dateTimestamp,
       type: selectedShift,
     });

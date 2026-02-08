@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
-import { useAuth } from './AuthContext';
+import { useCurrentUser } from './AuthContext';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import {
@@ -14,7 +14,7 @@ import {
 const NotificationContext = createContext(null);
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  const { user, household } = useAuth();
+  const { user, household } = useCurrentUser();
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
@@ -23,12 +23,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // Fetch data for scheduling reminders
   const upcomingAppointments = useQuery(
     api.appointments.getUpcoming,
-    household ? { householdId: household._id } : 'skip'
+    household ? {} : 'skip'
   );
 
   const repeatingEvents = useQuery(
     api.repeatingEvents.getAll,
-    household ? { householdId: household._id } : 'skip'
+    household ? {} : 'skip'
   );
 
   // Initialize notifications on mount
@@ -66,7 +66,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const register = async () => {
       const token = await registerForPushNotifications();
       if (token) {
-        await savePushToken({ userId: user._id, expoPushToken: token });
+        await savePushToken({ expoPushToken: token });
       }
     };
 

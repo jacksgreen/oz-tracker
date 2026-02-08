@@ -1,51 +1,48 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { getAuthUser, getAuthUserWithHousehold } from "./auth";
 
 // Schedule/assign a care shift (creates uncompleted entry)
 export const schedule = mutation({
   args: {
-    householdId: v.id("households"),
     assignedUserId: v.id("users"),
     assignedUserName: v.string(),
     type: v.union(v.literal("am"), v.literal("pm")),
     date: v.number(), // Start of day timestamp
-    actingUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    const { user, household } = await getAuthUserWithHousehold(ctx);
+
     // Check if there's already an entry for this date/type
     const existing = await ctx.db
       .query("careShifts")
       .withIndex("by_household_date", (q) =>
-        q.eq("householdId", args.householdId).eq("date", args.date)
+        q.eq("householdId", household._id).eq("date", args.date)
       )
       .filter((q) => q.eq(q.field("type"), args.type))
       .first();
 
     if (existing) {
-      // Update the assignment
       await ctx.db.patch(existing._id, {
         assignedUserId: args.assignedUserId,
         assignedUserName: args.assignedUserName,
       });
 
-      if (args.actingUserId) {
-        const household = await ctx.db.get(args.householdId);
-        const shiftLabel = args.type === "am" ? "Morning" : "Evening";
-        await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
-          householdId: args.householdId,
-          excludeUserId: args.actingUserId,
-          title: "Shift Assigned",
-          body: `${args.assignedUserName} will handle ${household?.dogName ?? "the dog"}'s ${shiftLabel.toLowerCase()} shift.`,
-        });
-      }
+      const shiftLabel = args.type === "am" ? "Morning" : "Evening";
+      await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
+        householdId: household._id,
+        excludeUserId: user._id,
+        title: "Shift Assigned",
+        body: `${args.assignedUserName} will handle ${household.dogName}'s ${shiftLabel.toLowerCase()} shift.`,
+      });
 
       return existing._id;
     }
 
     // Create new scheduled shift
     const id = await ctx.db.insert("careShifts", {
-      householdId: args.householdId,
+      householdId: household._id,
       type: args.type,
       date: args.date,
       assignedUserId: args.assignedUserId,
@@ -53,16 +50,13 @@ export const schedule = mutation({
       completed: false,
     });
 
-    if (args.actingUserId) {
-      const household = await ctx.db.get(args.householdId);
-      const shiftLabel = args.type === "am" ? "Morning" : "Evening";
-      await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
-        householdId: args.householdId,
-        excludeUserId: args.actingUserId,
-        title: "Shift Assigned",
-        body: `${args.assignedUserName} will handle ${household?.dogName ?? "the dog"}'s ${shiftLabel.toLowerCase()} shift.`,
-      });
-    }
+    const shiftLabel = args.type === "am" ? "Morning" : "Evening";
+    await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
+      householdId: household._id,
+      excludeUserId: user._id,
+      title: "Shift Assigned",
+      body: `${args.assignedUserName} will handle ${household.dogName}'s ${shiftLabel.toLowerCase()} shift.`,
+    });
 
     return id;
   },
@@ -72,30 +66,34 @@ export const schedule = mutation({
 export const complete = mutation({
   args: {
     shiftId: v.id("careShifts"),
-    completedByUserId: v.id("users"),
-    completedByUserName: v.string(),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
     const shift = await ctx.db.get(args.shiftId);
+    if (!shift) throw new Error("Shift not found");
+
+    // Verify shift belongs to user's household
+    if (shift.householdId !== user.householdId) {
+      throw new Error("Unauthorized");
+    }
+
     await ctx.db.patch(args.shiftId, {
       completed: true,
       completedAt: Date.now(),
-      completedByUserId: args.completedByUserId,
-      completedByUserName: args.completedByUserName,
+      completedByUserId: user._id,
+      completedByUserName: user.name,
       notes: args.notes,
     });
 
-    if (shift) {
-      const household = await ctx.db.get(shift.householdId);
-      const shiftLabel = shift.type === "am" ? "Morning" : "Evening";
-      await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
-        householdId: shift.householdId,
-        excludeUserId: args.completedByUserId,
-        title: `${shiftLabel} shift done!`,
-        body: `${args.completedByUserName} completed ${household?.dogName ?? "the dog"}'s ${shiftLabel.toLowerCase()} walk and meal.`,
-      });
-    }
+    const household = await ctx.db.get(shift.householdId);
+    const shiftLabel = shift.type === "am" ? "Morning" : "Evening";
+    await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
+      householdId: shift.householdId,
+      excludeUserId: user._id,
+      title: `${shiftLabel} shift done!`,
+      body: `${user.name} completed ${household?.dogName ?? "the dog"}'s ${shiftLabel.toLowerCase()} walk and meal.`,
+    });
   },
 });
 
@@ -105,6 +103,13 @@ export const uncomplete = mutation({
     shiftId: v.id("careShifts"),
   },
   handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    const shift = await ctx.db.get(args.shiftId);
+    if (!shift) throw new Error("Shift not found");
+    if (shift.householdId !== user.householdId) {
+      throw new Error("Unauthorized");
+    }
+
     await ctx.db.patch(args.shiftId, {
       completed: false,
       completedAt: undefined,
@@ -118,22 +123,19 @@ export const uncomplete = mutation({
 // Quick log: create and immediately complete a shift (for unscheduled)
 export const logNow = mutation({
   args: {
-    householdId: v.id("households"),
-    userId: v.id("users"),
-    userName: v.string(),
     type: v.union(v.literal("am"), v.literal("pm")),
     notes: v.optional(v.string()),
     clientDate: v.number(), // Client's local start-of-day timestamp
   },
   handler: async (ctx, args) => {
-    // Use client-provided date to ensure timezone consistency
+    const { user, household } = await getAuthUserWithHousehold(ctx);
     const dateTimestamp = args.clientDate;
 
     // Check if there's already an entry for today
     const existing = await ctx.db
       .query("careShifts")
       .withIndex("by_household_date", (q) =>
-        q.eq("householdId", args.householdId).eq("date", dateTimestamp)
+        q.eq("householdId", household._id).eq("date", dateTimestamp)
       )
       .filter((q) => q.eq(q.field("type"), args.type))
       .first();
@@ -141,38 +143,35 @@ export const logNow = mutation({
     let resultId;
 
     if (existing) {
-      // Complete the existing entry
       await ctx.db.patch(existing._id, {
         completed: true,
         completedAt: Date.now(),
-        completedByUserId: args.userId,
-        completedByUserName: args.userName,
+        completedByUserId: user._id,
+        completedByUserName: user.name,
         notes: args.notes,
       });
       resultId = existing._id;
     } else {
-      // Create new completed shift (user is both assigned and completer)
       resultId = await ctx.db.insert("careShifts", {
-        householdId: args.householdId,
+        householdId: household._id,
         type: args.type,
         date: dateTimestamp,
-        assignedUserId: args.userId,
-        assignedUserName: args.userName,
+        assignedUserId: user._id,
+        assignedUserName: user.name,
         completed: true,
         completedAt: Date.now(),
-        completedByUserId: args.userId,
-        completedByUserName: args.userName,
+        completedByUserId: user._id,
+        completedByUserName: user.name,
         notes: args.notes,
       });
     }
 
-    const household = await ctx.db.get(args.householdId);
     const shiftLabel = args.type === "am" ? "Morning" : "Evening";
     await ctx.scheduler.runAfter(0, internal.notifications.sendPushNotification, {
-      householdId: args.householdId,
-      excludeUserId: args.userId,
+      householdId: household._id,
+      excludeUserId: user._id,
       title: `${shiftLabel} shift done!`,
-      body: `${args.userName} completed ${household?.dogName ?? "the dog"}'s ${shiftLabel.toLowerCase()} walk and meal.`,
+      body: `${user.name} completed ${household.dogName}'s ${shiftLabel.toLowerCase()} walk and meal.`,
     });
 
     return resultId;
@@ -182,14 +181,14 @@ export const logNow = mutation({
 // Get care shifts for today
 export const getToday = query({
   args: {
-    householdId: v.id("households"),
     clientDate: v.number(), // Client's local start-of-day timestamp
   },
   handler: async (ctx, args) => {
+    const { household } = await getAuthUserWithHousehold(ctx);
     return await ctx.db
       .query("careShifts")
       .withIndex("by_household_date", (q) =>
-        q.eq("householdId", args.householdId).eq("date", args.clientDate)
+        q.eq("householdId", household._id).eq("date", args.clientDate)
       )
       .collect();
   },
@@ -198,16 +197,16 @@ export const getToday = query({
 // Get care shifts for a date range (for schedule view)
 export const getByDateRange = query({
   args: {
-    householdId: v.id("households"),
     startDate: v.number(),
     endDate: v.number(),
   },
   handler: async (ctx, args) => {
+    const { household } = await getAuthUserWithHousehold(ctx);
     return await ctx.db
       .query("careShifts")
       .withIndex("by_household_date", (q) =>
         q
-          .eq("householdId", args.householdId)
+          .eq("householdId", household._id)
           .gte("date", args.startDate)
           .lte("date", args.endDate)
       )
@@ -218,15 +217,16 @@ export const getByDateRange = query({
 // Clear assignment (delete if not completed)
 export const clearAssignment = mutation({
   args: {
-    householdId: v.id("households"),
     date: v.number(),
     type: v.union(v.literal("am"), v.literal("pm")),
   },
   handler: async (ctx, args) => {
+    const { household } = await getAuthUserWithHousehold(ctx);
+
     const shift = await ctx.db
       .query("careShifts")
       .withIndex("by_household_date", (q) =>
-        q.eq("householdId", args.householdId).eq("date", args.date)
+        q.eq("householdId", household._id).eq("date", args.date)
       )
       .filter((q) => q.eq(q.field("type"), args.type))
       .first();
@@ -241,6 +241,12 @@ export const clearAssignment = mutation({
 export const remove = mutation({
   args: { shiftId: v.id("careShifts") },
   handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    const shift = await ctx.db.get(args.shiftId);
+    if (!shift) throw new Error("Shift not found");
+    if (shift.householdId !== user.householdId) {
+      throw new Error("Unauthorized");
+    }
     await ctx.db.delete(args.shiftId);
   },
 });

@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { useAuth } from '../../context/AuthContext';
+import { useCurrentUser } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
 import { Id } from '../../convex/_generated/dataModel';
 
@@ -28,7 +28,7 @@ const INTERVAL_OPTIONS = [
 ];
 
 export default function VetScreen() {
-  const { user, household } = useAuth();
+  const { user, household } = useCurrentUser();
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddRecurringModal, setShowAddRecurringModal] = useState(false);
@@ -49,17 +49,17 @@ export default function VetScreen() {
   // Queries
   const upcomingAppointments = useQuery(
     api.appointments.getUpcoming,
-    household ? { householdId: household._id } : 'skip'
+    household ? {} : 'skip'
   );
 
   const allAppointments = useQuery(
     api.appointments.getAll,
-    household ? { householdId: household._id } : 'skip'
+    household ? {} : 'skip'
   );
 
   const repeatingEvents = useQuery(
     api.repeatingEvents.getAll,
-    household ? { householdId: household._id } : 'skip'
+    household ? {} : 'skip'
   );
 
   // Mutations
@@ -83,12 +83,10 @@ export default function VetScreen() {
     setIsSubmitting(true);
     try {
       await addAppointment({
-        householdId: household._id,
         title: title.trim(),
         date: selectedDate.getTime(),
         location: location.trim() || undefined,
         notes: notes.trim() || undefined,
-        actingUserId: user?._id,
       });
 
       resetAppointmentForm();
@@ -106,7 +104,7 @@ export default function VetScreen() {
       {
         text: 'Complete',
         onPress: async () => {
-          await markComplete({ appointmentId, actingUserId: user?._id });
+          await markComplete({ appointmentId });
         },
       },
     ]);
@@ -136,7 +134,6 @@ export default function VetScreen() {
       now.setHours(0, 0, 0, 0);
 
       await addRepeatingEvent({
-        householdId: household._id,
         title: recurringTitle.trim(),
         intervalDays: selectedInterval,
         startDate: now.getTime(),
@@ -152,7 +149,7 @@ export default function VetScreen() {
   };
 
   const handleMarkEventDone = async (eventId: Id<'repeatingEvents'>) => {
-    await markEventDone({ eventId, actingUserId: user?._id });
+    await markEventDone({ eventId });
   };
 
   const handleDeleteRecurringEvent = (eventId: Id<'repeatingEvents'>) => {

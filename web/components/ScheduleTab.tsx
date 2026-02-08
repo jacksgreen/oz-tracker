@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { useAuth } from "@/context/AuthContext";
+import { useCurrentUser } from "@/context/AuthContext";
 import { Modal } from "./Modal";
 import {
   IoSunny,
@@ -25,7 +25,7 @@ const SHIFT_CONFIG = {
 const SHIFT_ORDER: ShiftType[] = ["am", "pm"];
 
 export function ScheduleTab() {
-  const { user, household } = useAuth();
+  const { user, household } = useCurrentUser();
   const [selectedWeekOffset, setSelectedWeekOffset] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -50,7 +50,6 @@ export function ScheduleTab() {
     api.careShifts.getByDateRange,
     household
       ? {
-          householdId: household._id,
           startDate: weekDates[0].getTime(),
           endDate: weekDates[6].getTime(),
         }
@@ -59,7 +58,7 @@ export function ScheduleTab() {
 
   const members = useQuery(
     api.households.getMembers,
-    household ? { householdId: household._id } : "skip"
+    household ? {} : "skip"
   );
 
   const scheduleShift = useMutation(api.careShifts.schedule);
@@ -80,12 +79,10 @@ export function ScheduleTab() {
     if (!selectedDate || !selectedShift || !household) return;
     const ts = new Date(selectedDate).setHours(0, 0, 0, 0);
     await scheduleShift({
-      householdId: household._id,
       assignedUserId: memberId,
       assignedUserName: memberName,
       type: selectedShift,
       date: ts,
-      actingUserId: user?._id,
     });
     setModalVisible(false);
   };
@@ -93,7 +90,7 @@ export function ScheduleTab() {
   const handleClear = async () => {
     if (!selectedDate || !selectedShift || !household) return;
     const ts = new Date(selectedDate).setHours(0, 0, 0, 0);
-    await clearShiftAssignment({ householdId: household._id, date: ts, type: selectedShift });
+    await clearShiftAssignment({ date: ts, type: selectedShift });
     setModalVisible(false);
   };
 

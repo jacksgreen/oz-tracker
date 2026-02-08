@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { useAuth } from "@/context/AuthContext";
+import { useCurrentUser } from "@/context/AuthContext";
 import {
   IoSunny,
   IoMoon,
@@ -39,17 +39,17 @@ const SHIFT_CONFIG = {
 } as const;
 
 export function HomeTab() {
-  const { user, household } = useAuth();
+  const { user, household } = useCurrentUser();
   const todayTimestamp = getTodayTimestamp();
 
   const todayShifts = useQuery(
     api.careShifts.getToday,
-    household ? { householdId: household._id, clientDate: todayTimestamp } : "skip"
+    household ? { clientDate: todayTimestamp } : "skip"
   );
 
   const upcomingAppointments = useQuery(
     api.appointments.getUpcoming,
-    household ? { householdId: household._id } : "skip"
+    household ? {} : "skip"
   );
 
   const logShift = useMutation(api.careShifts.logNow);
@@ -65,9 +65,6 @@ export function HomeTab() {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     await logShift({
-      householdId: household._id,
-      userId: user._id,
-      userName: user.name,
       type,
       clientDate: d.getTime(),
     });

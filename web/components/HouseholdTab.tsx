@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useQuery } from "convex/react";
+import { useClerk } from "@clerk/nextjs";
 import { api } from "../convex/_generated/api";
-import { useAuth } from "@/context/AuthContext";
+import { useCurrentUser } from "@/context/AuthContext";
 import { IoShareOutline, IoCheckmark } from "react-icons/io5";
 
 const MEMBER_COLORS = [
@@ -16,12 +17,13 @@ const MEMBER_COLORS = [
 ];
 
 export function HouseholdTab() {
-  const { user, household, signOut } = useAuth();
+  const { user, household } = useCurrentUser();
+  const { signOut } = useClerk();
   const [copied, setCopied] = useState(false);
 
   const members = useQuery(
     api.households.getMembers,
-    household ? { householdId: household._id } : "skip"
+    household ? {} : "skip"
   );
 
   const handleShareInviteCode = async () => {
