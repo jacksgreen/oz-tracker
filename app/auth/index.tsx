@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   },
   welcomeTitle: {
     fontFamily: fonts.serif,
-    fontSize: 48,
+    fontSize: 44,
     color: colors.text.primary,
     textAlign: 'center',
     letterSpacing: -1,
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     height: 52,
     backgroundColor: colors.text.primary,
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.md,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

@@ -12,31 +12,31 @@ export const fonts = {
 // --- Core editorial palette (flat tokens) ---
 
 const palette = {
-  ink: '#1A1A1A',
-  inkLight: '#3D3D3D',
-  inkMuted: '#6B6B6B',
-  inkFaint: '#999999',
+  ink: '#2C2825',
+  inkLight: '#4A4541',
+  inkMuted: '#7A756F',
+  inkFaint: '#A8A29E',
 
-  cream: '#FAF7F2',
-  creamDark: '#F2EDE5',
-  parchment: '#EDE8DF',
+  cream: '#FAF9F6',
+  creamDark: '#F3F1EC',
+  parchment: '#ECEAE5',
   white: '#FFFFFF',
 
-  accent: '#C8A97E',
-  accentLight: '#E8DCCB',
-  accentDark: '#A68B5B',
+  accent: '#B8977A',
+  accentLight: '#EDE5DB',
+  accentDark: '#9A7E63',
 
-  success: '#5C8A5E',
-  successLight: '#E8F0E8',
+  success: '#6B8F6B',
+  successLight: '#ECF2EC',
   warning: '#C4964C',
   warningLight: '#FAF0E1',
   error: '#B85450',
   errorLight: '#F5E5E4',
 
-  border: '#E2DDD5',
-  borderDark: '#C8C2B8',
+  border: '#E8E5E0',
+  borderDark: '#D1CCC5',
 
-  overlay: 'rgba(26, 26, 26, 0.5)',
+  overlay: 'rgba(44, 40, 37, 0.4)',
   overlayLight: 'rgba(26, 26, 26, 0.03)',
 } as const;
 
@@ -101,7 +101,7 @@ export const spacing = {
   xs: 4,
   sm: 8,
   md: 16,
-  lg: 24,
+  lg: 28,
   xl: 32,
   xxl: 48,
   xxxl: 64,
@@ -109,10 +109,10 @@ export const spacing = {
 
 export const borderRadius = {
   none: 0,
-  sm: 4,
-  md: 8,
-  lg: 8,
-  xl: 12,
+  sm: 6,
+  md: 10,
+  lg: 12,
+  xl: 16,
   full: 9999,
 } as const;
 
@@ -120,13 +120,13 @@ export const typography = {
   // Instrument Serif — display headings
   displayLarge: {
     fontFamily: 'InstrumentSerif_400Regular',
-    fontSize: 38,
+    fontSize: 36,
     lineHeight: 42,
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
   displayMedium: {
     fontFamily: 'InstrumentSerif_400Regular',
-    fontSize: 28,
+    fontSize: 26,
     lineHeight: 34,
     letterSpacing: -0.3,
   },
@@ -147,14 +147,14 @@ export const typography = {
   label: {
     fontWeight: '500' as const,
     fontSize: 11,
-    letterSpacing: 1.5,
+    letterSpacing: 1.8,
     textTransform: 'uppercase' as const,
   },
   body: {
     fontWeight: '400' as const,
     fontSize: 15,
     lineHeight: 22,
-    letterSpacing: 0.1,
+    letterSpacing: 0.15,
   },
   bodySmall: {
     fontWeight: '400' as const,
@@ -171,7 +171,7 @@ export const typography = {
   button: {
     fontWeight: '500' as const,
     fontSize: 14,
-    letterSpacing: 1,
+    letterSpacing: 1.2,
     textTransform: 'uppercase' as const,
   },
 } as const;
@@ -180,22 +180,22 @@ export const shadows = {
   sm: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
+    shadowOpacity: 0.02,
+    shadowRadius: 3,
     elevation: 1,
   },
   md: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
     elevation: 2,
   },
   lg: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOpacity: 0.03,
+    shadowRadius: 12,
     elevation: 3,
   },
 } as const;

@@ -35,16 +35,16 @@ const SHIFT_CONFIG: Record<ShiftType, ShiftConfig> = {
     shortLabel: 'AM',
     description: 'Walk + Breakfast',
     icon: 'sunny',
-    color: '#8B7355',
-    bgColor: '#F2EDE5',
+    color: '#8A7B6B',
+    bgColor: colors.background.secondary,
   },
   pm: {
     label: 'Evening Shift',
     shortLabel: 'PM',
     description: 'Walk + Dinner',
     icon: 'moon',
-    color: '#6B6B6B',
-    bgColor: '#EDE8DF',
+    color: '#7A756F',
+    bgColor: colors.background.muted,
   },
 };
 
@@ -171,6 +171,19 @@ export default function ScheduleScreen() {
       .join('')
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  const getMemberColor = (name: string) => {
+    const memberColors = [
+      { bg: '#F3F0EA', text: '#8A7B6B' }, // Oat
+      { bg: '#EDEAEF', text: '#736880' }, // Blueberry
+      { bg: '#E8EDE8', text: '#5E7A65' }, // Herb
+      { bg: '#F0EAEA', text: '#7B5E5E' }, // Lingonberry
+      { bg: '#E8EAED', text: '#5E6875' }, // Stone
+      { bg: '#EDEBE5', text: '#756E5E' }, // Rye
+    ];
+    const index = name.charCodeAt(0) % memberColors.length;
+    return memberColors[index];
   };
 
   // Loading states: undefined === loading, null === empty
@@ -301,8 +314,8 @@ export default function ScheduleScreen() {
                               />
                             </View>
                           ) : (
-                            <View style={styles.assignedBadge}>
-                              <Text style={styles.assignedInitials}>
+                            <View style={[styles.assignedBadge, { backgroundColor: getMemberColor(entry.assignedUserName).bg }]}>
+                              <Text style={[styles.assignedInitials, { color: getMemberColor(entry.assignedUserName).text }]}>
                                 {getInitials(entry.assignedUserName)}
                               </Text>
                             </View>
@@ -353,8 +366,8 @@ export default function ScheduleScreen() {
             <View style={styles.legendList}>
               {members?.map((member) => (
                 <View key={member._id} style={styles.legendItem}>
-                  <View style={styles.legendBadge}>
-                    <Text style={styles.legendInitials}>{getInitials(member.name)}</Text>
+                  <View style={[styles.legendBadge, { backgroundColor: getMemberColor(member.name).bg }]}>
+                    <Text style={[styles.legendInitials, { color: getMemberColor(member.name).text }]}>{getInitials(member.name)}</Text>
                   </View>
                   <Text style={styles.legendName}>
                     {member.name}
@@ -419,12 +432,14 @@ export default function ScheduleScreen() {
                         <View
                           style={[
                             styles.memberBadge,
+                            !isAssigned && { backgroundColor: getMemberColor(member.name).bg },
                             isAssigned && styles.memberBadgeSelected,
                           ]}
                         >
                           <Text
                             style={[
                               styles.memberInitials,
+                              !isAssigned && { color: getMemberColor(member.name).text },
                               isAssigned && styles.memberInitialsSelected,
                             ]}
                           >

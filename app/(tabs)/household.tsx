@@ -78,12 +78,12 @@ export default function HouseholdScreen() {
   // Muted editorial member colors
   const getMemberColor = (name: string) => {
     const memberColors = [
-      { bg: '#F2EDE5', text: '#8B7355' }, // Warm sand
-      { bg: '#E8E4EF', text: '#6B6080' }, // Muted lavender
-      { bg: '#E5ECE8', text: '#5B7365' }, // Sage
-      { bg: '#EDE5E5', text: '#7B5555' }, // Dusty rose
-      { bg: '#E5E8ED', text: '#556075' }, // Slate
-      { bg: '#EDE8E0', text: '#756B55' }, // Taupe
+      { bg: '#F3F0EA', text: '#8A7B6B' }, // Oat
+      { bg: '#EDEAEF', text: '#736880' }, // Blueberry
+      { bg: '#E8EDE8', text: '#5E7A65' }, // Herb
+      { bg: '#F0EAEA', text: '#7B5E5E' }, // Lingonberry
+      { bg: '#E8EAED', text: '#5E6875' }, // Stone
+      { bg: '#EDEBE5', text: '#756E5E' }, // Rye
     ];
 
     const index = name.charCodeAt(0) % memberColors.length;

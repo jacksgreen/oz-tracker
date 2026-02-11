@@ -37,15 +37,15 @@ const SHIFT_CONFIG: Record<ShiftType, ShiftConfig> = {
     label: 'Morning Shift',
     description: 'Walk + Breakfast',
     icon: 'sunny',
-    color: '#8B7355',
-    bgColor: '#F2EDE5',
+    color: '#8A7B6B',
+    bgColor: colors.background.secondary,
   },
   pm: {
     label: 'Evening Shift',
     description: 'Walk + Dinner',
     icon: 'moon',
-    color: '#6B6B6B',
-    bgColor: '#EDE8DF',
+    color: '#7A756F',
+    bgColor: colors.background.muted,
   },
 };
 
