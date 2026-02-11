@@ -7,7 +7,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "convex": "convex dev",
+    "convex:dev": "convex dev",
     "convex:deploy": "convex deploy"
   },
   "dependencies": {
@@ -17,6 +17,7 @@
     "@react-native-async-storage/async-storage": "^2.2.0",
     "convex": "^1.31.2",
     "expo": "~54.0.30",
+    "expo-auth-session": "~7.0.10",
     "expo-constants": "^18.0.12",
     "expo-font": "~14.0.11",
     "expo-linking": "^8.0.11",
