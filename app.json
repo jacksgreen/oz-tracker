@@ -47,8 +47,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "79e244ce-a5cb-4f07-9743-22ebaa9a440d"
+        "projectId": "b53ea02a-df5b-4c47-8b4a-ce8d3e796b9d"
       }
-    }
+    },
+    "owner": "jackgreen16"
   }
 }
