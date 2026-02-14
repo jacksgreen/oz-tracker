@@ -31,7 +31,6 @@
       "package": "com.dogduty.app"
     },
     "plugins": [
-      "./plugins/withPrivacyManifest",
       "expo-router",
       [
         "expo-notifications",
