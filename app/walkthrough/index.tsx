@@ -8,6 +8,7 @@ import {
   Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,8 +58,13 @@ export default function WalkthroughScreen() {
     router.replace('/');
   };
 
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
   const handleEnableNotifications = async () => {
-    await requestNotificationPermissions();
+    const granted = await requestNotificationPermissions();
+    if (granted) {
+      setNotificationsEnabled(true);
+    }
   };
 
   return (
@@ -89,17 +95,26 @@ export default function WalkthroughScreen() {
             {index === 2 && (
               <View style={styles.lastScreenActions}>
                 <TouchableOpacity
-                  style={styles.notificationButton}
+                  style={[styles.notificationButton, notificationsEnabled && styles.notificationButtonEnabled]}
                   onPress={handleEnableNotifications}
                   activeOpacity={0.8}
+                  disabled={notificationsEnabled}
                 >
-                  <Ionicons name="notifications-outline" size={18} color={colors.text.inverse} />
-                  <Text style={styles.notificationButtonText}>ENABLE NOTIFICATIONS</Text>
+                  <Ionicons
+                    name={notificationsEnabled ? 'checkmark-circle' : 'notifications-outline'}
+                    size={18}
+                    color={notificationsEnabled ? colors.accent.warm : colors.text.inverse}
+                  />
+                  <Text style={[styles.notificationButtonText, notificationsEnabled && styles.notificationButtonTextEnabled]}>
+                    {notificationsEnabled ? 'NOTIFICATIONS ENABLED' : 'ENABLE NOTIFICATIONS'}
+                  </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={handleEnableNotifications} hitSlop={8}>
-                  <Text style={styles.notNowText}>Not now</Text>
-                </TouchableOpacity>
+                {!notificationsEnabled && (
+                  <TouchableOpacity onPress={handleFinish} hitSlop={8}>
+                    <Text style={styles.notNowText}>Not now</Text>
+                  </TouchableOpacity>
+                )}
 
                 <TouchableOpacity
                   style={styles.primaryButton}
@@ -185,9 +200,15 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     width: '100%',
   },
+  notificationButtonEnabled: {
+    backgroundColor: colors.accent.light,
+  },
   notificationButtonText: {
     ...typography.button,
     color: colors.text.inverse,
+  },
+  notificationButtonTextEnabled: {
+    color: colors.accent.warm,
   },
   notNowText: {
     ...typography.bodySmall,
