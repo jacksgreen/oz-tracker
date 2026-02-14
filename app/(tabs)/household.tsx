@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from 'convex/react';
@@ -32,28 +33,57 @@ export default function HouseholdScreen() {
   const [editDogName, setEditDogName] = useState('');
   const [editError, setEditError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const updateHousehold = useMutation(api.households.update);
+  const regenerateCode = useMutation(api.households.regenerateInviteCode);
 
   const members = useQuery(
     api.households.getMembers,
     household ? {} : 'skip'
   );
 
-  const handleCopyInviteCode = async () => {
+  const handleShareInviteCode = async () => {
     if (!household) return;
-
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await Share.share({
         message: `Join my household "${household.name}" on Dog Duty! Use invite code: ${household.inviteCode}`,
       });
-      setCopied(true);
-      setTimeout(() => {
-        setCopied(false);
-      }, 2000);
-    } catch (error) {
-      // User cancelled or error occurred
+    } catch {
+      // User cancelled
     }
+  };
+
+  const handleCopyInviteCode = async () => {
+    if (!household) return;
+    await Clipboard.setStringAsync(household.inviteCode);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRegenerateCode = () => {
+    Alert.alert(
+      'Reset Invite Code',
+      'This will invalidate the current code. Anyone with the old code will no longer be able to join.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset Code',
+          style: 'destructive',
+          onPress: async () => {
+            setRegenerating(true);
+            try {
+              await regenerateCode();
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch {
+              Alert.alert('Error', 'Failed to reset invite code. Please try again.');
+            } finally {
+              setRegenerating(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleSignOut = () => {
@@ -147,28 +177,60 @@ export default function HouseholdScreen() {
         {/* Invite Code */}
         <View style={styles.inviteSection}>
           <Text style={styles.sectionTitle} accessibilityRole="header">INVITE CODE</Text>
-          <View style={styles.inviteRow}>
-            <Text style={styles.codeText} accessibilityLabel={`Invite code: ${household.inviteCode.split('').join(' ')}`}>{household.inviteCode}</Text>
+          <Text
+            style={styles.codeText}
+            accessibilityLabel={`Invite code: ${household.inviteCode.split('').join(' ')}`}
+          >
+            {household.inviteCode}
+          </Text>
+          <View style={styles.codeActionRow}>
             <TouchableOpacity
-              style={styles.shareButton}
+              style={styles.codeAction}
               onPress={handleCopyInviteCode}
-              activeOpacity={0.8}
-              accessibilityLabel="Share invite code"
+              activeOpacity={0.6}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Copy invite code"
               accessibilityRole="button"
             >
               <Ionicons
-                name={copied ? 'checkmark' : 'share-outline'}
-                size={14}
-                color={copied ? colors.accent.warm : colors.text.inverse}
+                name={copied ? 'checkmark' : 'copy-outline'}
+                size={13}
+                color={copied ? colors.status.success : colors.text.muted}
               />
-              <Text style={[styles.shareButtonText, copied && styles.shareButtonTextCopied]}>
-                {copied ? 'Shared' : 'Share'}
+              <Text style={[styles.codeActionText, copied && { color: colors.status.success }]}>
+                {copied ? 'Copied' : 'Copy'}
               </Text>
             </TouchableOpacity>
+            <Text style={styles.codeActionDivider}>{'\u00B7'}</Text>
+            <TouchableOpacity
+              style={styles.codeAction}
+              onPress={handleShareInviteCode}
+              activeOpacity={0.6}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Share invite code"
+              accessibilityRole="button"
+            >
+              <Ionicons name="share-outline" size={13} color={colors.text.muted} />
+              <Text style={styles.codeActionText}>Share</Text>
+            </TouchableOpacity>
+            <Text style={styles.codeActionDivider}>{'\u00B7'}</Text>
+            <TouchableOpacity
+              style={styles.codeAction}
+              onPress={handleRegenerateCode}
+              disabled={regenerating}
+              activeOpacity={0.6}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              {regenerating ? (
+                <ActivityIndicator size="small" color={colors.text.muted} />
+              ) : (
+                <>
+                  <Ionicons name="refresh-outline" size={13} color={colors.text.muted} />
+                  <Text style={styles.codeActionText}>Reset</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
-          <Text style={styles.inviteHint}>
-            Share this code to add family members
-          </Text>
         </View>
 
         {/* Members Section */}
@@ -350,43 +412,38 @@ const styles = StyleSheet.create({
 
   // Invite Code
   inviteSection: {
+    alignItems: 'center',
     marginBottom: spacing.xl,
     paddingBottom: spacing.xl,
     borderBottomWidth: hairline,
     borderBottomColor: colors.border.light,
   },
-  inviteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
   codeText: {
     fontFamily: fonts.serif,
-    fontSize: 26,
+    fontSize: 28,
     color: colors.text.primary,
-    letterSpacing: 4,
+    letterSpacing: 6,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
   },
-  shareButton: {
+  codeActionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.text.primary,
-    borderRadius: borderRadius.sm,
+    gap: spacing.md,
   },
-  shareButtonText: {
-    ...typography.button,
-    fontSize: 11,
-    color: colors.text.inverse,
+  codeAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  shareButtonTextCopied: {
-    color: colors.accent.warm,
-  },
-  inviteHint: {
+  codeActionText: {
     ...typography.caption,
     color: colors.text.muted,
+    letterSpacing: 0.5,
+  },
+  codeActionDivider: {
+    color: colors.border.medium,
+    fontSize: 14,
   },
 
   // Section

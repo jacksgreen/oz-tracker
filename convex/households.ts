@@ -11,6 +11,8 @@ function generateInviteCode(): string {
   return code;
 }
 
+const MAX_CODE_RETRIES = 5;
+
 export const create = mutation({
   args: {
     name: v.string(),
@@ -18,7 +20,22 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx);
-    const inviteCode = generateInviteCode();
+
+    let inviteCode = "";
+    for (let i = 0; i < MAX_CODE_RETRIES; i++) {
+      const candidate = generateInviteCode();
+      const existing = await ctx.db
+        .query("households")
+        .withIndex("by_invite_code", (q) => q.eq("inviteCode", candidate))
+        .first();
+      if (!existing) {
+        inviteCode = candidate;
+        break;
+      }
+    }
+    if (!inviteCode) {
+      throw new Error("Failed to generate a unique invite code. Please try again.");
+    }
 
     const householdId = await ctx.db.insert("households", {
       name: args.name,
@@ -75,11 +92,39 @@ export const get = query({
 export const getByInviteCode = query({
   args: { inviteCode: v.string() },
   handler: async (ctx, args) => {
-    await ctx.auth.getUserIdentity(); // auth check
-    return await ctx.db
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const household = await ctx.db
       .query("households")
       .withIndex("by_invite_code", (q) => q.eq("inviteCode", args.inviteCode.toUpperCase()))
       .first();
+    if (!household) return null;
+    return { name: household.name };
+  },
+});
+
+export const regenerateInviteCode = mutation({
+  handler: async (ctx) => {
+    const { household } = await getAuthUserWithHousehold(ctx);
+
+    let newCode = "";
+    for (let i = 0; i < MAX_CODE_RETRIES; i++) {
+      const candidate = generateInviteCode();
+      const existing = await ctx.db
+        .query("households")
+        .withIndex("by_invite_code", (q) => q.eq("inviteCode", candidate))
+        .first();
+      if (!existing) {
+        newCode = candidate;
+        break;
+      }
+    }
+    if (!newCode) {
+      throw new Error("Failed to generate a unique invite code. Please try again.");
+    }
+
+    await ctx.db.patch(household._id, { inviteCode: newCode });
+    return { inviteCode: newCode };
   },
 });
 

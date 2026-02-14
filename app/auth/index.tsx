@@ -9,17 +9,19 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Share,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useSSO } from '@clerk/clerk-expo';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useCurrentUser } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
 import * as Linking from 'expo-linking';
+import * as Clipboard from 'expo-clipboard';
 
-type AuthStep = 'welcome' | 'signin' | 'household-choice' | 'create-household' | 'join-household';
+type AuthStep = 'welcome' | 'signin' | 'household-choice' | 'create-household' | 'join-household' | 'confirm-join';
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -34,9 +36,15 @@ export default function AuthScreen() {
   const [householdName, setHouseholdName] = useState('');
   const [dogName, setDogName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
+  const [confirmedCode, setConfirmedCode] = useState('');
   const [createdInviteCode, setCreatedInviteCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const lookedUpHousehold = useQuery(
+    api.households.getByInviteCode,
+    confirmedCode ? { inviteCode: confirmedCode } : 'skip'
+  );
 
   // Redirect if already authenticated with household
   React.useEffect(() => {
@@ -86,22 +94,46 @@ export default function AuthScreen() {
     }
   };
 
-  const handleJoinHousehold = async () => {
+  const handleLookupHousehold = () => {
     if (!inviteCode.trim()) {
       setError('Please enter an invite code');
       return;
     }
+    setError('');
+    setConfirmedCode(inviteCode.trim().toUpperCase());
+    setStep('confirm-join');
+  };
+
+  const handleConfirmJoin = async () => {
     setIsLoading(true);
     setError('');
     try {
       await joinHouseholdMutation({
-        inviteCode: inviteCode.trim().toUpperCase(),
+        inviteCode: confirmedCode,
       });
     } catch (e) {
-      setError('Invalid invite code. Please check and try again.');
+      setError('Failed to join household. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  const handleShareCreatedCode = async () => {
+    try {
+      await Share.share({
+        message: `Join my household on Dog Duty! Use invite code: ${createdInviteCode}`,
+      });
+    } catch {
+      // User cancelled
+    }
+  };
+
+  const handleCopyCreatedCode = async () => {
+    await Clipboard.setStringAsync(createdInviteCode);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
   };
 
   const renderWelcome = () => (
@@ -227,6 +259,32 @@ export default function AuthScreen() {
               <Text style={styles.inviteCodeValue}>{createdInviteCode}</Text>
             </View>
 
+            <View style={styles.codeActionRow}>
+              <TouchableOpacity
+                style={styles.codeAction}
+                onPress={handleCopyCreatedCode}
+                activeOpacity={0.6}
+              >
+                <Ionicons
+                  name={codeCopied ? 'checkmark' : 'copy-outline'}
+                  size={13}
+                  color={codeCopied ? colors.status.success : colors.text.muted}
+                />
+                <Text style={[styles.codeActionLabel, codeCopied && { color: colors.status.success }]}>
+                  {codeCopied ? 'Copied' : 'Copy'}
+                </Text>
+              </TouchableOpacity>
+              <Text style={styles.codeActionDivider}>{'\u00B7'}</Text>
+              <TouchableOpacity
+                style={styles.codeAction}
+                onPress={handleShareCreatedCode}
+                activeOpacity={0.6}
+              >
+                <Ionicons name="share-outline" size={13} color={colors.text.muted} />
+                <Text style={styles.codeActionLabel}>Share</Text>
+              </TouchableOpacity>
+            </View>
+
             {household ? (
               <TouchableOpacity
                 style={styles.primaryButton}
@@ -322,22 +380,76 @@ export default function AuthScreen() {
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <TouchableOpacity
-        style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
-        onPress={handleJoinHousehold}
-        disabled={isLoading}
+        style={styles.primaryButton}
+        onPress={handleLookupHousehold}
         activeOpacity={0.8}
       >
-        {isLoading ? (
-          <ActivityIndicator color={colors.text.inverse} />
-        ) : (
-          <>
-            <Text style={styles.primaryButtonText}>JOIN HOUSEHOLD</Text>
-            <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
-          </>
-        )}
+        <Text style={styles.primaryButtonText}>CONTINUE</Text>
+        <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
       </TouchableOpacity>
     </View>
   );
+
+  const renderConfirmJoin = () => {
+    const isLookupLoading = confirmedCode && lookedUpHousehold === undefined;
+    const notFound = confirmedCode && lookedUpHousehold === null;
+
+    return (
+      <View style={styles.stepContainer}>
+        <TouchableOpacity style={styles.backButton} onPress={() => {
+          setStep('join-household');
+          setConfirmedCode('');
+          setError('');
+        }}>
+          <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
+        </TouchableOpacity>
+
+        <Text style={styles.stepTitle}>Confirm</Text>
+
+        {isLookupLoading ? (
+          <View style={styles.confirmLoadingContainer}>
+            <ActivityIndicator size="small" color={colors.text.muted} />
+            <Text style={styles.stepSubtitle}>Looking up household...</Text>
+          </View>
+        ) : notFound ? (
+          <>
+            <Text style={styles.stepSubtitle}>
+              No household found for code "{confirmedCode}". Please check and try again.
+            </Text>
+          </>
+        ) : lookedUpHousehold ? (
+          <>
+            <Text style={styles.stepSubtitle}>
+              You're about to join:
+            </Text>
+
+            <View style={styles.confirmCard}>
+              <Ionicons name="home-outline" size={22} color={colors.text.primary} />
+              <Text style={styles.confirmHouseholdName}>{lookedUpHousehold.name}</Text>
+            </View>
+
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            <TouchableOpacity
+              style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+              onPress={handleConfirmJoin}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={colors.text.inverse} />
+              ) : (
+                <>
+                  <Text style={styles.primaryButtonText}>JOIN HOUSEHOLD</Text>
+                  <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
+                </>
+              )}
+            </TouchableOpacity>
+          </>
+        ) : null}
+      </View>
+    );
+  };
 
   const renderStep = () => {
     switch (step) {
@@ -351,6 +463,8 @@ export default function AuthScreen() {
         return renderCreateHousehold();
       case 'join-household':
         return renderJoinHousehold();
+      case 'confirm-join':
+        return renderConfirmJoin();
     }
   };
 
@@ -537,6 +651,52 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: colors.text.primary,
     letterSpacing: 4,
+  },
+
+  // Code actions (post-creation)
+  codeActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  codeAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  codeActionLabel: {
+    ...typography.caption,
+    color: colors.text.muted,
+    letterSpacing: 0.5,
+  },
+  codeActionDivider: {
+    color: colors.border.medium,
+    fontSize: 14,
+  },
+
+  // Confirm join
+  confirmLoadingContainer: {
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingTop: spacing.xl,
+  },
+  confirmCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    borderWidth: hairline,
+    borderColor: colors.border.medium,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.lg,
+  },
+  confirmHouseholdName: {
+    ...typography.displayMedium,
+    color: colors.text.primary,
+    flex: 1,
   },
 
   // Error
