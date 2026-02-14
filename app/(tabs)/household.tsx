@@ -36,7 +36,12 @@ export default function HouseholdScreen() {
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [nameModalVisible, setNameModalVisible] = useState(false);
+  const [editUserName, setEditUserName] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [savingName, setSavingName] = useState(false);
   const updateHousehold = useMutation(api.households.update);
+  const updateUser = useMutation(api.users.update);
   const regenerateCode = useMutation(api.households.regenerateInviteCode);
   const deleteAccountMutation = useMutation(api.users.deleteAccount);
 
@@ -135,6 +140,32 @@ export default function HouseholdScreen() {
     setEditDogName(household.dogName);
     setEditError('');
     setEditModalVisible(true);
+  };
+
+  const handleOpenNameEdit = () => {
+    if (!user) return;
+    setEditUserName(user.name);
+    setNameError('');
+    setNameModalVisible(true);
+  };
+
+  const handleSaveName = async () => {
+    const trimmed = editUserName.trim();
+    if (!trimmed) {
+      setNameError('Name is required');
+      return;
+    }
+    setSavingName(true);
+    setNameError('');
+    try {
+      await updateUser({ name: trimmed });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setNameModalVisible(false);
+    } catch {
+      setNameError('Failed to save. Please try again.');
+    } finally {
+      setSavingName(false);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -278,7 +309,7 @@ export default function HouseholdScreen() {
                 const isCurrentUser = member._id === user?._id;
                 const memberColor = getMemberColor(member.name);
 
-                return (
+                const row = (
                   <View
                     key={member._id}
                     style={[
@@ -297,7 +328,12 @@ export default function HouseholdScreen() {
                       </Text>
                     </View>
                     <View style={styles.memberInfo}>
-                      <Text style={styles.memberName}>{member.name}</Text>
+                      <View style={styles.memberNameRow}>
+                        <Text style={styles.memberName}>{member.name}</Text>
+                        {isCurrentUser && (
+                          <Ionicons name="pencil-outline" size={12} color={colors.text.muted} style={{ marginLeft: spacing.xs }} />
+                        )}
+                      </View>
                       <Text style={styles.memberEmail}>{member.email}</Text>
                     </View>
                     {isCurrentUser && (
@@ -307,6 +343,21 @@ export default function HouseholdScreen() {
                     )}
                   </View>
                 );
+
+                if (isCurrentUser) {
+                  return (
+                    <TouchableOpacity
+                      key={member._id}
+                      onPress={handleOpenNameEdit}
+                      activeOpacity={0.6}
+                      accessibilityLabel="Edit your name"
+                      accessibilityRole="button"
+                    >
+                      {row}
+                    </TouchableOpacity>
+                  );
+                }
+                return row;
               })}
             </View>
           )}
@@ -391,6 +442,54 @@ export default function HouseholdScreen() {
                   {deleting ? 'Deleting...' : 'Delete Account'}
                 </Text>
               </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Edit Name Modal */}
+      <Modal
+        visible={nameModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setNameModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <SafeAreaView style={styles.modalContainer} edges={['top', 'bottom']}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setNameModalVisible(false)} activeOpacity={0.8}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Edit Name</Text>
+              <TouchableOpacity onPress={handleSaveName} disabled={savingName} activeOpacity={0.8}>
+                <Text style={[styles.modalSaveText, savingName && styles.modalSaveTextDisabled]}>
+                  {savingName ? 'Saving...' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <View style={styles.modalField}>
+                <Text style={styles.modalLabel}>YOUR NAME</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editUserName}
+                  onChangeText={(text) => { setEditUserName(text); setNameError(''); }}
+                  placeholder="Enter your name"
+                  placeholderTextColor={colors.text.muted}
+                  autoCapitalize="words"
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleSaveName}
+                />
+              </View>
+
+              {nameError ? (
+                <Text style={styles.modalError}>{nameError}</Text>
+              ) : null}
             </View>
           </SafeAreaView>
         </KeyboardAvoidingView>
@@ -535,6 +634,10 @@ const styles = StyleSheet.create({
   },
   memberInfo: {
     flex: 1,
+  },
+  memberNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   memberName: {
     fontSize: 15,
