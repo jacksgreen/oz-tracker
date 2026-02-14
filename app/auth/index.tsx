@@ -56,6 +56,8 @@ export default function AuthScreen() {
       router.replace('/');
     } else if (isSignedIn && user && !household) {
       setStep('household-choice');
+    } else if (!isSignedIn) {
+      setStep('welcome');
     }
   }, [isSignedIn, user, household]);
 
