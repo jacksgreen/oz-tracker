@@ -4,7 +4,9 @@ import { v } from "convex/values";
 export default defineSchema({
   households: defineTable({
     inviteCode: v.string(),
+    inviteCodeCreatedAt: v.optional(v.number()),
     dogName: v.string(),
+    ownerId: v.optional(v.id("users")),
   }).index("by_invite_code", ["inviteCode"]),
 
   users: defineTable({
@@ -15,7 +17,8 @@ export default defineSchema({
     expoPushToken: v.optional(v.string()),
   })
     .index("by_email", ["email"])
-    .index("by_clerk_id", ["clerkId"]),
+    .index("by_clerk_id", ["clerkId"])
+    .index("by_household_id", ["householdId"]),
 
   // Simplified care shifts - just AM/PM (whoever takes the shift does walk + food)
   careShifts: defineTable({

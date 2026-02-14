@@ -8,14 +8,12 @@ export const getHouseholdMemberTokens = internalQuery({
     excludeUserId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const users = await ctx.db.query("users").collect();
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_household_id", (q) => q.eq("householdId", args.householdId))
+      .collect();
     return users
-      .filter(
-        (u) =>
-          u.householdId === args.householdId &&
-          u._id !== args.excludeUserId &&
-          u.expoPushToken
-      )
+      .filter((u) => u._id !== args.excludeUserId && u.expoPushToken)
       .map((u) => u.expoPushToken!);
   },
 });

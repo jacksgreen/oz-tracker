@@ -81,6 +81,8 @@ export const deleteAccount = mutation({
     const user = await getAuthUser(ctx);
 
     if (user.householdId) {
+      const household = await ctx.db.get(user.householdId);
+
       // Delete care shifts assigned to this user
       const shifts = await ctx.db
         .query("careShifts")
@@ -98,7 +100,7 @@ export const deleteAccount = mutation({
       // Check if this user is the last household member
       const members = await ctx.db
         .query("users")
-        .filter((q) => q.eq(q.field("householdId"), user.householdId))
+        .withIndex("by_household_id", (q) => q.eq("householdId", user.householdId))
         .collect();
 
       if (members.length <= 1) {
@@ -130,6 +132,10 @@ export const deleteAccount = mutation({
         }
 
         await ctx.db.delete(user.householdId);
+      } else if (household && household.ownerId === user._id) {
+        // Transfer ownership before deleting
+        const nextOwner = members.find((m) => m._id !== user._id)!;
+        await ctx.db.patch(household._id, { ownerId: nextOwner._id });
       }
     }
 

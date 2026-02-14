@@ -12,6 +12,21 @@ function generateInviteCode(): string {
 }
 
 const MAX_CODE_RETRIES = 5;
+const INVITE_CODE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+async function generateUniqueInviteCode(ctx: any): Promise<string> {
+  for (let i = 0; i < MAX_CODE_RETRIES; i++) {
+    const candidate = generateInviteCode();
+    const existing = await ctx.db
+      .query("households")
+      .withIndex("by_invite_code", (q: any) => q.eq("inviteCode", candidate))
+      .first();
+    if (!existing) {
+      return candidate;
+    }
+  }
+  throw new Error("Failed to generate a unique invite code. Please try again.");
+}
 
 export const create = mutation({
   args: {
@@ -20,25 +35,14 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx);
 
-    let inviteCode = "";
-    for (let i = 0; i < MAX_CODE_RETRIES; i++) {
-      const candidate = generateInviteCode();
-      const existing = await ctx.db
-        .query("households")
-        .withIndex("by_invite_code", (q) => q.eq("inviteCode", candidate))
-        .first();
-      if (!existing) {
-        inviteCode = candidate;
-        break;
-      }
-    }
-    if (!inviteCode) {
-      throw new Error("Failed to generate a unique invite code. Please try again.");
-    }
+    const inviteCode = await generateUniqueInviteCode(ctx);
+    const now = Date.now();
 
     const householdId = await ctx.db.insert("households", {
       dogName: args.dogName,
       inviteCode,
+      inviteCodeCreatedAt: now,
+      ownerId: user._id,
     });
 
     await ctx.db.patch(user._id, { householdId });
@@ -63,12 +67,56 @@ export const join = mutation({
       throw new Error("Invalid invite code");
     }
 
+    if (household.inviteCodeCreatedAt) {
+      const codeAge = Date.now() - household.inviteCodeCreatedAt;
+      if (codeAge > INVITE_CODE_EXPIRY_MS) {
+        throw new Error("This invite code has expired. Ask a household member for a new one.");
+      }
+    }
+
     if (user.householdId === household._id) {
       return { householdId: household._id, userId: user._id };
     }
 
     await ctx.db.patch(user._id, { householdId: household._id });
     return { householdId: household._id, userId: user._id };
+  },
+});
+
+export const leave = mutation({
+  handler: async (ctx) => {
+    const { user, household } = await getAuthUserWithHousehold(ctx);
+
+    const members = await ctx.db
+      .query("users")
+      .withIndex("by_household_id", (q) => q.eq("householdId", household._id))
+      .collect();
+
+    if (members.length <= 1) {
+      throw new Error(
+        "You are the only member. Delete the household instead, or invite someone before leaving."
+      );
+    }
+
+    // Remove care shifts assigned to this user
+    const shifts = await ctx.db
+      .query("careShifts")
+      .withIndex("by_household_date", (q) => q.eq("householdId", household._id))
+      .collect();
+
+    for (const shift of shifts) {
+      if (shift.assignedUserId === user._id) {
+        await ctx.db.delete(shift._id);
+      }
+    }
+
+    // If the leaving user is the owner, transfer ownership to the next member
+    if (household.ownerId === user._id) {
+      const nextOwner = members.find((m) => m._id !== user._id)!;
+      await ctx.db.patch(household._id, { ownerId: nextOwner._id });
+    }
+
+    await ctx.db.patch(user._id, { householdId: undefined });
   },
 });
 
@@ -97,7 +145,11 @@ export const getByInviteCode = query({
       .withIndex("by_invite_code", (q) => q.eq("inviteCode", args.inviteCode.toUpperCase()))
       .first();
     if (!household) return null;
-    return { dogName: household.dogName };
+
+    const expired = household.inviteCodeCreatedAt
+      ? Date.now() - household.inviteCodeCreatedAt > INVITE_CODE_EXPIRY_MS
+      : false;
+    return { dogName: household.dogName, expired };
   },
 });
 
@@ -105,23 +157,12 @@ export const regenerateInviteCode = mutation({
   handler: async (ctx) => {
     const { household } = await getAuthUserWithHousehold(ctx);
 
-    let newCode = "";
-    for (let i = 0; i < MAX_CODE_RETRIES; i++) {
-      const candidate = generateInviteCode();
-      const existing = await ctx.db
-        .query("households")
-        .withIndex("by_invite_code", (q) => q.eq("inviteCode", candidate))
-        .first();
-      if (!existing) {
-        newCode = candidate;
-        break;
-      }
-    }
-    if (!newCode) {
-      throw new Error("Failed to generate a unique invite code. Please try again.");
-    }
+    const newCode = await generateUniqueInviteCode(ctx);
 
-    await ctx.db.patch(household._id, { inviteCode: newCode });
+    await ctx.db.patch(household._id, {
+      inviteCode: newCode,
+      inviteCodeCreatedAt: Date.now(),
+    });
     return { inviteCode: newCode };
   },
 });
@@ -148,7 +189,7 @@ export const getMembers = query({
     const { household } = await getAuthUserWithHousehold(ctx);
     return await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("householdId"), household._id))
+      .withIndex("by_household_id", (q) => q.eq("householdId", household._id))
       .collect();
   },
 });

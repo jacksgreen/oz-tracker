@@ -446,6 +446,12 @@ export default function AuthScreen() {
               No dog found for code "{confirmedCode}". Please check and try again.
             </Text>
           </>
+        ) : lookedUpHousehold?.expired ? (
+          <>
+            <Text style={styles.stepSubtitle}>
+              This invite code has expired. Ask a household member to reset it and share a new one.
+            </Text>
+          </>
         ) : lookedUpHousehold ? (
           <>
             <Text style={styles.stepSubtitle}>

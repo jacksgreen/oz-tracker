@@ -39,9 +39,11 @@ export default function HouseholdScreen() {
   const [editUserName, setEditUserName] = useState('');
   const [nameError, setNameError] = useState('');
   const [savingName, setSavingName] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const updateHousehold = useMutation(api.households.update);
   const updateUser = useMutation(api.users.update);
   const regenerateCode = useMutation(api.households.regenerateInviteCode);
+  const leaveHouseholdMutation = useMutation(api.households.leave);
   const deleteAccountMutation = useMutation(api.users.deleteAccount);
 
   const members = useQuery(
@@ -126,6 +128,45 @@ export default function HouseholdScreen() {
             } catch {
               setDeleting(false);
               Alert.alert('Error', 'Failed to delete account. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleLeaveHousehold = () => {
+    const isOwner = household?.ownerId === user?._id;
+    const memberCount = members?.length ?? 0;
+
+    if (memberCount <= 1) {
+      Alert.alert(
+        'Cannot Leave',
+        'You are the only member of this household. Invite someone else first, or delete your account to remove the household.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    const message = isOwner
+      ? 'You are the owner of this household. Ownership will be transferred to another member. Your assigned care shifts will be removed.'
+      : 'You will lose access to this household\'s data and your assigned care shifts will be removed.';
+
+    Alert.alert(
+      'Leave Household',
+      message,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            setLeaving(true);
+            try {
+              await leaveHouseholdMutation();
+            } catch (e: any) {
+              setLeaving(false);
+              Alert.alert('Error', e.message || 'Failed to leave household. Please try again.');
             }
           },
         },
@@ -410,10 +451,22 @@ export default function HouseholdScreen() {
 
             <View style={styles.modalFooter}>
               <TouchableOpacity
+                onPress={handleLeaveHousehold}
+                disabled={leaving}
+                activeOpacity={0.8}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.modalFooterAction}
+              >
+                <Text style={styles.leaveHouseholdText}>
+                  {leaving ? 'Leaving...' : 'Leave Household'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 onPress={handleDeleteAccount}
                 disabled={deleting}
                 activeOpacity={0.8}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.modalFooterAction}
               >
                 <Text style={styles.deleteAccountText}>
                   {deleting ? 'Deleting...' : 'Delete Account'}
@@ -706,6 +759,13 @@ const styles = StyleSheet.create({
     marginTop: 'auto',
     alignItems: 'center',
     paddingBottom: spacing.xl,
+    gap: spacing.lg,
+  },
+  modalFooterAction: {},
+  leaveHouseholdText: {
+    ...typography.caption,
+    color: colors.text.muted,
+    letterSpacing: 0.5,
   },
   deleteAccountText: {
     ...typography.caption,

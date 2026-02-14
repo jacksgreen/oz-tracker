@@ -16,6 +16,8 @@ interface Household {
   _id: Id<"households">;
   dogName: string;
   inviteCode: string;
+  inviteCodeCreatedAt?: number;
+  ownerId?: Id<"users">;
 }
 
 /**
