@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Animated,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +26,17 @@ const getTodayTimestamp = () => {
   startOfDay.setHours(0, 0, 0, 0);
   return startOfDay.getTime();
 };
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const shiftTransition = LayoutAnimation.create(
+  250,
+  LayoutAnimation.Types.easeInEaseOut,
+  LayoutAnimation.Properties.opacity,
+);
 
 type ShiftType = 'am' | 'pm';
 
@@ -104,6 +118,20 @@ export default function HomeScreen() {
 
   const nextAppointment = upcomingAppointments?.[0];
 
+  // Animate layout when shift completion state changes
+  const prevAmCompleted = useRef(amShift?.completed);
+  const prevPmCompleted = useRef(pmShift?.completed);
+  useEffect(() => {
+    if (
+      prevAmCompleted.current !== amShift?.completed ||
+      prevPmCompleted.current !== pmShift?.completed
+    ) {
+      LayoutAnimation.configureNext(shiftTransition);
+    }
+    prevAmCompleted.current = amShift?.completed;
+    prevPmCompleted.current = pmShift?.completed;
+  }, [amShift?.completed, pmShift?.completed]);
+
   const handleLogShift = async (type: ShiftType) => {
     if (!user || !household) return;
     const startOfDay = new Date();
@@ -166,47 +194,40 @@ export default function HomeScreen() {
         }
       >
         <View style={styles.shiftCardHeader}>
-          <Ionicons name={config.icon} size={18} color={config.color} style={{ marginRight: spacing.sm }} />
+          <Ionicons name={config.icon} size={18} color={isCompleted ? colors.status.success : config.color} style={{ marginRight: spacing.sm }} />
           <View style={styles.shiftTitleContainer}>
-            <Text style={styles.shiftLabel}>{config.label}</Text>
+            <Text style={[styles.shiftLabel, isCompleted && styles.shiftLabelComplete]}>{config.label}</Text>
             <Text style={styles.shiftDescription}>{config.description}</Text>
           </View>
         </View>
 
         {isCompleted ? (
-          <View style={styles.shiftCompleteContent}>
-            <View style={styles.shiftCompleteRow}>
-              <Ionicons name="checkmark-circle" size={22} color={colors.status.success} />
-              <View style={styles.shiftCompleteText}>
-                <Text style={styles.shiftCompletedBy}>{shift.completedByUserName}</Text>
-                <Text style={styles.shiftCompletedTime}>{formatTime(shift.completedAt!)}</Text>
-              </View>
+          <View style={styles.shiftStatusRow}>
+            <View style={styles.completedBadge}>
+              <Ionicons name="checkmark" size={15} color={colors.status.success} />
             </View>
+            <Text style={styles.statusNameComplete}>{shift.completedByUserName}</Text>
+            <View style={styles.statusDot} />
+            <Text style={styles.statusTime}>{formatTime(shift.completedAt!)}</Text>
           </View>
         ) : (
-          <View style={styles.shiftPendingContent}>
+          <View style={styles.shiftStatusRow}>
             {shift ? (
-              <View style={styles.shiftAssignedRow}>
+              <>
                 <View style={styles.assignedBadge}>
                   <Text style={styles.assignedInitial}>
                     {shift.assignedUserName.charAt(0)}
                   </Text>
                 </View>
-                <View style={styles.assignedTextContainer}>
-                  <Text style={styles.assignedLabel}>Assigned to</Text>
-                  <Text style={styles.assignedName}>{shift.assignedUserName}</Text>
-                </View>
-                <View style={styles.tapIndicator}>
-                  <Ionicons name="checkmark" size={16} color={colors.text.muted} />
-                </View>
-              </View>
+                <Text style={styles.statusName}>{shift.assignedUserName}</Text>
+              </>
             ) : (
-              <View style={styles.shiftUnassignedRow}>
-                <View style={styles.emptyCircle}>
-                  <Ionicons name="add" size={18} color={colors.text.muted} />
+              <>
+                <View style={styles.unassignedBadge}>
+                  <Ionicons name="ellipsis-horizontal" size={14} color={colors.text.muted} />
                 </View>
-                <Text style={styles.tapToLog}>Tap to mark as done</Text>
-              </View>
+                <Text style={styles.statusNameMuted}>Unassigned</Text>
+              </>
             )}
           </View>
         )}
@@ -396,16 +417,21 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     borderWidth: hairline,
     borderColor: colors.border.light,
+    borderLeftWidth: 3,
+    borderLeftColor: 'transparent',
     ...shadows.sm,
   },
   shiftCardComplete: {
-    borderLeftWidth: 3,
+    backgroundColor: colors.status.successBg,
+    borderColor: colors.status.successBg,
     borderLeftColor: colors.status.success,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   shiftCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   shiftTitleContainer: {
     flex: 1,
@@ -416,104 +442,90 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     marginBottom: 2,
   },
+  shiftLabelComplete: {
+    color: colors.text.secondary,
+  },
   shiftDescription: {
     ...typography.bodySmall,
     color: colors.text.secondary,
   },
 
-  // Shift Complete State
-  shiftCompleteContent: {
-    paddingTop: spacing.sm,
-    borderTopWidth: hairline,
-    borderTopColor: colors.border.light,
-  },
-  shiftCompleteRow: {
+  // Shared status row — same skeleton for both states
+  shiftStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-  },
-  shiftCompleteText: {
-    flex: 1,
-  },
-  shiftCompletedBy: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: colors.text.primary,
-  },
-  shiftCompletedTime: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginTop: 2,
+    paddingTop: spacing.md,
   },
 
-  // Shift Pending State
-  shiftPendingContent: {
-    paddingTop: spacing.sm,
-    borderTopWidth: hairline,
-    borderTopColor: colors.border.light,
-  },
-  shiftAssignedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  assignedBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: hairline,
-    borderColor: colors.border.medium,
+  // Completed state badge
+  completedBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.status.successBg,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background.card,
+  },
+
+  // Pending assigned badge
+  assignedBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.accent.light,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   assignedInitial: {
     fontFamily: fonts.serif,
-    fontSize: 16,
+    fontSize: 14,
     color: colors.text.primary,
   },
-  assignedTextContainer: {
-    flex: 1,
-  },
-  assignedLabel: {
-    ...typography.caption,
-    color: colors.text.muted,
-    marginBottom: 2,
-  },
-  assignedName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: colors.text.primary,
-  },
-  tapIndicator: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: hairline,
-    borderColor: colors.border.light,
+
+  // Pending unassigned badge
+  unassignedBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.background.muted,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  // Unassigned State
-  shiftUnassignedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
+  // Shared text styles
+  statusName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.text.primary,
+    letterSpacing: 0.1,
   },
-  emptyCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: hairline,
-    borderColor: colors.border.medium,
-    justifyContent: 'center',
-    alignItems: 'center',
+  statusNameComplete: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '400',
+    color: colors.text.secondary,
+    letterSpacing: 0.1,
   },
-  tapToLog: {
-    ...typography.bodySmall,
+  statusNameMuted: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '400',
     color: colors.text.muted,
+    letterSpacing: 0.1,
   },
+  statusDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: colors.text.muted,
+  },
+  statusTime: {
+    ...typography.caption,
+    color: colors.text.secondary,
+  },
+
 
   // Section
   section: {
