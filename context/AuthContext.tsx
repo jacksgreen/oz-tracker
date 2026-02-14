@@ -14,7 +14,6 @@ interface User {
 
 interface Household {
   _id: Id<"households">;
-  name: string;
   dogName: string;
   inviteCode: string;
 }

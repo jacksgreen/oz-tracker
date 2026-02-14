@@ -36,7 +36,6 @@ export default function AuthScreen() {
   const joinHouseholdMutation = useMutation(api.households.join);
 
   const [step, setStep] = useState<AuthStep>('welcome');
-  const [householdName, setHouseholdName] = useState('');
   const [dogName, setDogName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [confirmedCode, setConfirmedCode] = useState('');
@@ -84,20 +83,19 @@ export default function AuthScreen() {
   }, [startSSOFlow]);
 
   const handleCreateHousehold = async () => {
-    if (!householdName.trim() || !dogName.trim()) {
-      setError('Please fill in all fields');
+    if (!dogName.trim()) {
+      setError("Please enter your dog's name");
       return;
     }
     setIsLoading(true);
     setError('');
     try {
       const result = await createHouseholdMutation({
-        name: householdName.trim(),
         dogName: dogName.trim(),
       });
       setCreatedInviteCode(result.inviteCode);
     } catch (e) {
-      setError('Failed to create household. Please try again.');
+      setError('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -121,7 +119,7 @@ export default function AuthScreen() {
         inviteCode: confirmedCode,
       });
     } catch (e) {
-      setError('Failed to join household. Please try again.');
+      setError('Failed to join. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -148,7 +146,7 @@ export default function AuthScreen() {
   const handleShareCreatedCode = async () => {
     try {
       await Share.share({
-        message: `Join my household on Dog Duty! Use invite code: ${createdInviteCode}`,
+        message: `Join me on Dog Duty! Use invite code: ${createdInviteCode}`,
       });
     } catch {
       // User cancelled
@@ -245,9 +243,9 @@ export default function AuthScreen() {
 
   const renderHouseholdChoice = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Set Up Your Household</Text>
+      <Text style={styles.stepTitle}>Get Started</Text>
       <Text style={styles.stepSubtitle}>
-        Create a new household or join an existing one with an invite code
+        Set up a new dog or join an existing one with an invite code
       </Text>
 
       <TouchableOpacity
@@ -256,7 +254,7 @@ export default function AuthScreen() {
         activeOpacity={0.8}
       >
         <View style={styles.choiceContent}>
-          <Text style={styles.choiceTitle}>Create New Household</Text>
+          <Text style={styles.choiceTitle}>Add Your Dog</Text>
           <Text style={styles.choiceDescription}>
             Start fresh and invite your family
           </Text>
@@ -270,7 +268,7 @@ export default function AuthScreen() {
         activeOpacity={0.8}
       >
         <View style={styles.choiceContent}>
-          <Text style={styles.choiceTitle}>Join Existing Household</Text>
+          <Text style={styles.choiceTitle}>Join Existing Dog</Text>
           <Text style={styles.choiceDescription}>
             Enter an invite code to join
           </Text>
@@ -347,20 +345,8 @@ export default function AuthScreen() {
         </>
       ) : (
         <>
-          <Text style={styles.stepTitle}>Create Household</Text>
-          <Text style={styles.stepSubtitle}>Tell us about your home</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>HOUSEHOLD NAME</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., The Smith Family"
-              placeholderTextColor={colors.text.muted}
-              value={householdName}
-              onChangeText={setHouseholdName}
-              autoCapitalize="words"
-            />
-          </View>
+          <Text style={styles.stepTitle}>Add Your Dog</Text>
+          <Text style={styles.stepSubtitle}>What's your dog's name?</Text>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>DOG'S NAME</Text>
@@ -386,7 +372,7 @@ export default function AuthScreen() {
               <ActivityIndicator color={colors.text.inverse} />
             ) : (
               <>
-                <Text style={styles.primaryButtonText}>CREATE HOUSEHOLD</Text>
+                <Text style={styles.primaryButtonText}>CONTINUE</Text>
                 <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
               </>
             )}
@@ -402,7 +388,7 @@ export default function AuthScreen() {
         <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
       </TouchableOpacity>
 
-      <Text style={styles.stepTitle}>Join Household</Text>
+      <Text style={styles.stepTitle}>Join a Dog</Text>
       <Text style={styles.stepSubtitle}>
         Enter the invite code shared with you
       </Text>
@@ -452,12 +438,12 @@ export default function AuthScreen() {
         {isLookupLoading ? (
           <View style={styles.confirmLoadingContainer}>
             <ActivityIndicator size="small" color={colors.text.muted} />
-            <Text style={styles.stepSubtitle}>Looking up household...</Text>
+            <Text style={styles.stepSubtitle}>Looking up invite code...</Text>
           </View>
         ) : notFound ? (
           <>
             <Text style={styles.stepSubtitle}>
-              No household found for code "{confirmedCode}". Please check and try again.
+              No dog found for code "{confirmedCode}". Please check and try again.
             </Text>
           </>
         ) : lookedUpHousehold ? (
@@ -468,7 +454,7 @@ export default function AuthScreen() {
 
             <View style={styles.confirmCard}>
               <Ionicons name="home-outline" size={22} color={colors.text.primary} />
-              <Text style={styles.confirmHouseholdName}>{lookedUpHousehold.name}</Text>
+              <Text style={styles.confirmHouseholdName}>{lookedUpHousehold.dogName}</Text>
             </View>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -483,7 +469,7 @@ export default function AuthScreen() {
                 <ActivityIndicator color={colors.text.inverse} />
               ) : (
                 <>
-                  <Text style={styles.primaryButtonText}>JOIN HOUSEHOLD</Text>
+                  <Text style={styles.primaryButtonText}>JOIN</Text>
                   <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
                 </>
               )}

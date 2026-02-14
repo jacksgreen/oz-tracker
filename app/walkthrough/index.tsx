@@ -23,7 +23,7 @@ const SCREENS = [
   {
     icon: 'sunny' as const,
     title: "Your dog's day, organized",
-    body: "Each day has a morning and evening shift. Tap a shift card to mark it done — your household sees it instantly.",
+    body: "Each day has a morning and evening shift. Tap a shift card to mark it done — everyone sees it instantly.",
   },
   {
     icon: 'calendar-outline' as const,

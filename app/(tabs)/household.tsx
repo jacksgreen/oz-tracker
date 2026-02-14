@@ -30,7 +30,6 @@ export default function HouseholdScreen() {
   const { signOut } = clerk;
   const [copied, setCopied] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [editName, setEditName] = useState('');
   const [editDogName, setEditDogName] = useState('');
   const [editError, setEditError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -54,7 +53,7 @@ export default function HouseholdScreen() {
     if (!household) return;
     try {
       await Share.share({
-        message: `Join my household "${household.name}" on Dog Duty! Use invite code: ${household.inviteCode}`,
+        message: `Join me on Dog Duty! Use invite code: ${household.inviteCode}`,
       });
     } catch {
       // User cancelled
@@ -136,7 +135,6 @@ export default function HouseholdScreen() {
 
   const handleOpenEdit = () => {
     if (!household) return;
-    setEditName(household.name);
     setEditDogName(household.dogName);
     setEditError('');
     setEditModalVisible(true);
@@ -169,13 +167,8 @@ export default function HouseholdScreen() {
   };
 
   const handleSaveEdit = async () => {
-    const trimmedName = editName.trim();
     const trimmedDogName = editDogName.trim();
 
-    if (!trimmedName) {
-      setEditError('Household name is required');
-      return;
-    }
     if (!trimmedDogName) {
       setEditError("Dog's name is required");
       return;
@@ -184,7 +177,7 @@ export default function HouseholdScreen() {
     setSaving(true);
     setEditError('');
     try {
-      await updateHousehold({ name: trimmedName, dogName: trimmedDogName });
+      await updateHousehold({ dogName: trimmedDogName });
       setEditModalVisible(false);
     } catch {
       setEditError('Failed to save changes. Please try again.');
@@ -213,7 +206,7 @@ export default function HouseholdScreen() {
           onPress={handleOpenEdit}
           activeOpacity={0.6}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          accessibilityLabel="Household settings"
+          accessibilityLabel="Settings"
           accessibilityRole="button"
         >
           <Ionicons name="settings-outline" size={20} color={colors.text.secondary} />
@@ -227,10 +220,7 @@ export default function HouseholdScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.householdName}>{household.name}</Text>
-          <Text style={styles.headerSubtitle}>
-            {household.dogName}
-          </Text>
+          <Text style={styles.householdName}>{household.dogName}</Text>
         </View>
 
         {/* Invite Code */}
@@ -390,7 +380,7 @@ export default function HouseholdScreen() {
               <TouchableOpacity onPress={() => setEditModalVisible(false)} activeOpacity={0.8}>
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Edit Household</Text>
+              <Text style={styles.modalTitle}>Settings</Text>
               <TouchableOpacity onPress={handleSaveEdit} disabled={saving} activeOpacity={0.8}>
                 <Text style={[styles.modalSaveText, saving && styles.modalSaveTextDisabled]}>
                   {saving ? 'Saving...' : 'Save'}
@@ -399,19 +389,6 @@ export default function HouseholdScreen() {
             </View>
 
             <View style={styles.modalBody}>
-              <View style={styles.modalField}>
-                <Text style={styles.modalLabel}>HOUSEHOLD NAME</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={editName}
-                  onChangeText={(text) => { setEditName(text); setEditError(''); }}
-                  placeholder="Enter household name"
-                  placeholderTextColor={colors.text.muted}
-                  autoCapitalize="words"
-                  returnKeyType="next"
-                />
-              </View>
-
               <View style={styles.modalField}>
                 <Text style={styles.modalLabel}>DOG'S NAME</Text>
                 <TextInput
@@ -531,12 +508,6 @@ const styles = StyleSheet.create({
   householdName: {
     ...typography.displayLarge,
     color: colors.text.primary,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  headerSubtitle: {
-    ...typography.bodySmall,
-    color: colors.text.secondary,
     textAlign: 'center',
   },
 

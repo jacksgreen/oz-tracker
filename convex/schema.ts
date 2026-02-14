@@ -3,7 +3,6 @@ import { v } from "convex/values";
 
 export default defineSchema({
   households: defineTable({
-    name: v.string(),
     inviteCode: v.string(),
     dogName: v.string(),
   }).index("by_invite_code", ["inviteCode"]),

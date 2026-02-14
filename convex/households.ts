@@ -15,7 +15,6 @@ const MAX_CODE_RETRIES = 5;
 
 export const create = mutation({
   args: {
-    name: v.string(),
     dogName: v.string(),
   },
   handler: async (ctx, args) => {
@@ -38,7 +37,6 @@ export const create = mutation({
     }
 
     const householdId = await ctx.db.insert("households", {
-      name: args.name,
       dogName: args.dogName,
       inviteCode,
     });
@@ -99,7 +97,7 @@ export const getByInviteCode = query({
       .withIndex("by_invite_code", (q) => q.eq("inviteCode", args.inviteCode.toUpperCase()))
       .first();
     if (!household) return null;
-    return { name: household.name };
+    return { dogName: household.dogName };
   },
 });
 
@@ -130,14 +128,12 @@ export const regenerateInviteCode = mutation({
 
 export const update = mutation({
   args: {
-    name: v.optional(v.string()),
     dogName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { household } = await getAuthUserWithHousehold(ctx);
 
     const updates: Record<string, string> = {};
-    if (args.name !== undefined) updates.name = args.name;
     if (args.dogName !== undefined) updates.dogName = args.dogName;
 
     if (Object.keys(updates).length === 0) return household;
