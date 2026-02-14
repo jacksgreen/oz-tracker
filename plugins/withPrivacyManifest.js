@@ -79,17 +79,20 @@ function withPrivacyManifest(config) {
     fs.writeFileSync(privacyFilePath, PRIVACY_MANIFEST);
 
     // Add the file to the Xcode project if not already present
-    const groupName = projectName;
-    const group = project.pbxGroupByName(groupName);
-    if (group) {
+    const target = project.getFirstTarget();
+    const groupKey = project.findPBXGroupKey({ name: projectName }) ||
+      project.findPBXGroupKey({ path: projectName });
+
+    if (groupKey) {
+      const group = project.getPBXGroupByKey(groupKey);
       const hasFile = (group.children || []).some(
         (child) => child.comment === "PrivacyInfo.xcprivacy"
       );
       if (!hasFile) {
         project.addResourceFile(
-          `${projectName}/PrivacyInfo.xcprivacy`,
-          { target: project.getFirstTarget().uuid },
-          group.id
+          "PrivacyInfo.xcprivacy",
+          { target: target.uuid },
+          groupKey
         );
       }
     }
