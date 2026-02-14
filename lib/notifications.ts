@@ -331,7 +331,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
     });
     return tokenData.data;
   } catch (error) {
-    console.error('Failed to get push token:', error);
     return null;
   }
 }

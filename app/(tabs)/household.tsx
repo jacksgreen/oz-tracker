@@ -26,7 +26,8 @@ import { getInitials, getMemberColor } from '../../lib/utils';
 
 export default function HouseholdScreen() {
   const { user, household } = useCurrentUser();
-  const { signOut } = useClerk();
+  const clerk = useClerk();
+  const { signOut } = clerk;
   const [copied, setCopied] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editName, setEditName] = useState('');
@@ -34,8 +35,10 @@ export default function HouseholdScreen() {
   const [editError, setEditError] = useState('');
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const updateHousehold = useMutation(api.households.update);
   const regenerateCode = useMutation(api.households.regenerateInviteCode);
+  const deleteAccountMutation = useMutation(api.users.deleteAccount);
 
   const members = useQuery(
     api.households.getMembers,
@@ -96,6 +99,31 @@ export default function HouseholdScreen() {
           text: 'Sign Out',
           style: 'destructive',
           onPress: () => signOut(),
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all your data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteAccountMutation();
+              await clerk.user?.delete();
+              await signOut();
+            } catch {
+              setDeleting(false);
+              Alert.alert('Error', 'Failed to delete account. Please try again.');
+            }
+          },
         },
       ]
     );
@@ -292,6 +320,7 @@ export default function HouseholdScreen() {
         >
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
+
       </ScrollView>
 
       {/* Edit Household Modal */}
@@ -349,6 +378,19 @@ export default function HouseholdScreen() {
               {editError ? (
                 <Text style={styles.modalError}>{editError}</Text>
               ) : null}
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                onPress={handleDeleteAccount}
+                disabled={deleting}
+                activeOpacity={0.8}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.deleteAccountText}>
+                  {deleting ? 'Deleting...' : 'Delete Account'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </SafeAreaView>
         </KeyboardAvoidingView>
@@ -585,5 +627,15 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.text.muted,
     letterSpacing: 1,
+  },
+  modalFooter: {
+    marginTop: 'auto',
+    alignItems: 'center',
+    paddingBottom: spacing.xl,
+  },
+  deleteAccountText: {
+    ...typography.caption,
+    color: colors.text.muted,
+    letterSpacing: 0.5,
   },
 });

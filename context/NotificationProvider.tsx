@@ -45,12 +45,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     setup();
 
     // Set up notification listeners
-    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Notification received:', notification);
+    notificationListener.current = Notifications.addNotificationReceivedListener(_notification => {
     });
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notification response:', response);
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(_response => {
     });
 
     return () => {

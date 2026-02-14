@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useSSO } from '@clerk/clerk-expo';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { useCurrentUser } from '../../context/AuthContext';
+import { useCurrentUser, useStoreUser } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
 import { ProgressDots } from '../../components/ProgressDots';
 import * as Linking from 'expo-linking';
@@ -29,6 +29,7 @@ export default function AuthScreen() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const { startSSOFlow } = useSSO();
+  useStoreUser();
   const { user, household } = useCurrentUser();
 
   const createHouseholdMutation = useMutation(api.households.create);

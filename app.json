@@ -17,7 +17,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.dogduty.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSUserNotificationUsageDescription": "Dog Duty sends reminders for care shifts, vet appointments, and recurring care tasks."
       }
     },
     "android": {
@@ -30,6 +31,7 @@
       "package": "com.dogduty.app"
     },
     "plugins": [
+      "./plugins/withPrivacyManifest",
       "expo-router",
       [
         "expo-notifications",

@@ -75,6 +75,69 @@ export const savePushToken = mutation({
   },
 });
 
+/** Delete the current user's account and all associated data. */
+export const deleteAccount = mutation({
+  handler: async (ctx) => {
+    const user = await getAuthUser(ctx);
+
+    if (user.householdId) {
+      // Delete care shifts assigned to this user
+      const shifts = await ctx.db
+        .query("careShifts")
+        .withIndex("by_household_date", (q) =>
+          q.eq("householdId", user.householdId!)
+        )
+        .collect();
+
+      for (const shift of shifts) {
+        if (shift.assignedUserId === user._id) {
+          await ctx.db.delete(shift._id);
+        }
+      }
+
+      // Check if this user is the last household member
+      const members = await ctx.db
+        .query("users")
+        .filter((q) => q.eq(q.field("householdId"), user.householdId))
+        .collect();
+
+      if (members.length <= 1) {
+        // Last member — delete all household data
+        for (const shift of shifts) {
+          if (shift.assignedUserId !== user._id) {
+            await ctx.db.delete(shift._id);
+          }
+        }
+
+        const appointments = await ctx.db
+          .query("appointments")
+          .withIndex("by_household", (q) =>
+            q.eq("householdId", user.householdId!)
+          )
+          .collect();
+        for (const appt of appointments) {
+          await ctx.db.delete(appt._id);
+        }
+
+        const repeatingEvents = await ctx.db
+          .query("repeatingEvents")
+          .withIndex("by_household", (q) =>
+            q.eq("householdId", user.householdId!)
+          )
+          .collect();
+        for (const event of repeatingEvents) {
+          await ctx.db.delete(event._id);
+        }
+
+        await ctx.db.delete(user.householdId);
+      }
+    }
+
+    // Delete the user document
+    await ctx.db.delete(user._id);
+  },
+});
+
 /** Update the current user's profile. */
 export const update = mutation({
   args: {
