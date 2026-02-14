@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  RefreshControl,
   ActivityIndicator,
   Modal,
   Pressable,
@@ -13,9 +12,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from 'convex/react';
+import * as Haptics from 'expo-haptics';
 import { api } from '../../convex/_generated/api';
 import { useCurrentUser } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
+import { getInitials, getMemberColor } from '../../lib/utils';
 import { Id } from '../../convex/_generated/dataModel';
 
 type ShiftType = 'am' | 'pm';
@@ -52,7 +53,6 @@ const SHIFT_ORDER: ShiftType[] = ['am', 'pm'];
 
 export default function ScheduleScreen() {
   const { user, household } = useCurrentUser();
-  const [refreshing, setRefreshing] = useState(false);
   const [selectedWeekOffset, setSelectedWeekOffset] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -95,12 +95,6 @@ export default function ScheduleScreen() {
   const scheduleShift = useMutation(api.careShifts.schedule);
   const clearShiftAssignment = useMutation(api.careShifts.clearAssignment);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setRefreshing(false);
-  };
-
   const getShiftForDateAndType = (date: Date, shiftType: ShiftType) => {
     const dateTimestamp = new Date(date).setHours(0, 0, 0, 0);
     return careShifts?.find((s) => s.date === dateTimestamp && s.type === shiftType);
@@ -116,6 +110,8 @@ export default function ScheduleScreen() {
     if (!selectedDate || !selectedShift || !household) return;
     const dateTimestamp = new Date(selectedDate).setHours(0, 0, 0, 0);
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
     await scheduleShift({
       assignedUserId: memberId,
       assignedUserName: memberName,
@@ -129,6 +125,8 @@ export default function ScheduleScreen() {
   const handleClear = async () => {
     if (!selectedDate || !selectedShift || !household) return;
     const dateTimestamp = new Date(selectedDate).setHours(0, 0, 0, 0);
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     await clearShiftAssignment({
       date: dateTimestamp,
@@ -162,28 +160,6 @@ export default function ScheduleScreen() {
       return `${startMonth} ${startDay} - ${endDay}`;
     }
     return `${startMonth} ${startDay} - ${endMonth} ${endDay}`;
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const getMemberColor = (name: string) => {
-    const memberColors = [
-      { bg: '#F3F0EA', text: '#8A7B6B' }, // Oat
-      { bg: '#EDEAEF', text: '#736880' }, // Blueberry
-      { bg: '#E8EDE8', text: '#5E7A65' }, // Herb
-      { bg: '#F0EAEA', text: '#7B5E5E' }, // Lingonberry
-      { bg: '#E8EAED', text: '#5E6875' }, // Stone
-      { bg: '#EDEBE5', text: '#756E5E' }, // Rye
-    ];
-    const index = name.charCodeAt(0) % memberColors.length;
-    return memberColors[index];
   };
 
   // Loading states: undefined === loading, null === empty
@@ -239,13 +215,6 @@ export default function ScheduleScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.text.primary}
-          />
-        }
       >
         {/* Schedule Grid */}
         <View style={styles.gridContainer}>
@@ -303,6 +272,17 @@ export default function ScheduleScreen() {
                         ]}
                         onPress={() => !isCompleted && handleCellPress(date, shiftType)}
                         activeOpacity={isCompleted ? 1 : 0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                          `${date.toLocaleDateString('en-US', { weekday: 'long' })} ${config.shortLabel} shift` +
+                          (isCompleted
+                            ? `, completed by ${entry?.assignedUserName}`
+                            : entry
+                              ? `, assigned to ${entry.assignedUserName}, tap to reassign`
+                              : isPast
+                                ? ', past'
+                                : ', unassigned, tap to assign')
+                        }
                       >
                         {entry ? (
                           isCompleted ? (
@@ -339,6 +319,16 @@ export default function ScheduleScreen() {
             })
           )}
         </View>
+
+        {/* Empty State Encouragement */}
+        {!isGridLoading && careShifts && careShifts.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateTitle}>Plan your week</Text>
+            <Text style={styles.emptyStateSubtext}>
+              Assign shifts so everyone knows who's on duty
+            </Text>
+          </View>
+        )}
 
         {/* Shift Explanation — simplified */}
         <View style={styles.shiftExplanation}>
@@ -688,6 +678,23 @@ const styles = StyleSheet.create({
   completedBadge: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  emptyStateTitle: {
+    ...typography.displaySmall,
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
+  },
+  emptyStateSubtext: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+    textAlign: 'center',
   },
 
   // Shift Explanation — simplified

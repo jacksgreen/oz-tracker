@@ -5,18 +5,21 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  RefreshControl,
   ActivityIndicator,
   Alert,
   TextInput,
   Modal,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from 'convex/react';
+import * as Haptics from 'expo-haptics';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { api } from '../../convex/_generated/api';
 import { useCurrentUser } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
+import { formatDate, formatTime } from '../../lib/utils';
 import { Id } from '../../convex/_generated/dataModel';
 
 // Interval options for recurring events
@@ -29,7 +32,6 @@ const INTERVAL_OPTIONS = [
 
 export default function VetScreen() {
   const { user, household } = useCurrentUser();
-  const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddRecurringModal, setShowAddRecurringModal] = useState(false);
   const [showPast, setShowPast] = useState(false);
@@ -40,6 +42,26 @@ export default function VetScreen() {
   const [notes, setNotes] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Date/time picker state
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  // Edit appointment state
+  const [editingAppointment, setEditingAppointment] = useState<{
+    _id: Id<'appointments'>;
+    title: string;
+    date: number;
+    location?: string;
+    notes?: string;
+  } | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editDate, setEditDate] = useState(new Date());
+  const [showEditDatePicker, setShowEditDatePicker] = useState(false);
+  const [showEditTimePicker, setShowEditTimePicker] = useState(false);
 
   // Recurring event form state
   const [recurringTitle, setRecurringTitle] = useState('');
@@ -66,6 +88,7 @@ export default function VetScreen() {
   const addAppointment = useMutation(api.appointments.add);
   const markComplete = useMutation(api.appointments.markComplete);
   const removeAppointment = useMutation(api.appointments.remove);
+  const updateAppointment = useMutation(api.appointments.update);
 
   const addRepeatingEvent = useMutation(api.repeatingEvents.add);
   const markEventDone = useMutation(api.repeatingEvents.markDone);
@@ -82,6 +105,7 @@ export default function VetScreen() {
 
     setIsSubmitting(true);
     try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await addAppointment({
         title: title.trim(),
         date: selectedDate.getTime(),
@@ -104,6 +128,7 @@ export default function VetScreen() {
       {
         text: 'Complete',
         onPress: async () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           await markComplete({ appointmentId });
         },
       },
@@ -116,9 +141,52 @@ export default function VetScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => removeAppointment({ appointmentId }),
+        onPress: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          removeAppointment({ appointmentId });
+        },
       },
     ]);
+  };
+
+  const handleEditAppointment = (appointment: {
+    _id: Id<'appointments'>;
+    title: string;
+    date: number;
+    location?: string;
+    notes?: string;
+  }) => {
+    setEditingAppointment(appointment);
+    setEditTitle(appointment.title);
+    setEditDate(new Date(appointment.date));
+    setEditLocation(appointment.location || '');
+    setEditNotes(appointment.notes || '');
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingAppointment || !editTitle.trim()) {
+      Alert.alert('Missing Information', 'Please enter an appointment title.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await updateAppointment({
+        appointmentId: editingAppointment._id,
+        title: editTitle.trim(),
+        date: editDate.getTime(),
+        location: editLocation.trim() || undefined,
+        notes: editNotes.trim() || undefined,
+      });
+      setShowEditModal(false);
+      setEditingAppointment(null);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update appointment. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Recurring event handlers
@@ -133,6 +201,7 @@ export default function VetScreen() {
       const now = new Date();
       now.setHours(0, 0, 0, 0);
 
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await addRepeatingEvent({
         title: recurringTitle.trim(),
         intervalDays: selectedInterval,
@@ -149,6 +218,7 @@ export default function VetScreen() {
   };
 
   const handleMarkEventDone = async (eventId: Id<'repeatingEvents'>) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await markEventDone({ eventId });
   };
 
@@ -158,7 +228,10 @@ export default function VetScreen() {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => removeRepeatingEvent({ eventId }),
+        onPress: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          removeRepeatingEvent({ eventId });
+        },
       },
     ]);
   };
@@ -176,33 +249,6 @@ export default function VetScreen() {
     setSelectedInterval(14);
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setRefreshing(false);
-  };
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return 'Tomorrow';
-    }
-    return date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-  };
-
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  };
-
   const formatShortDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString([], {
       month: 'short',
@@ -216,6 +262,42 @@ export default function VetScreen() {
     date.setDate(date.getDate() + daysFromNow);
     date.setHours(10, 0, 0, 0);
     setSelectedDate(date);
+  };
+
+  const onDateChange = (_event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (date) {
+      const updated = new Date(selectedDate);
+      updated.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+      setSelectedDate(updated);
+    }
+  };
+
+  const onTimeChange = (_event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === 'android') setShowTimePicker(false);
+    if (date) {
+      const updated = new Date(selectedDate);
+      updated.setHours(date.getHours(), date.getMinutes(), 0, 0);
+      setSelectedDate(updated);
+    }
+  };
+
+  const onEditDateChange = (_event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === 'android') setShowEditDatePicker(false);
+    if (date) {
+      const updated = new Date(editDate);
+      updated.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+      setEditDate(updated);
+    }
+  };
+
+  const onEditTimeChange = (_event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === 'android') setShowEditTimePicker(false);
+    if (date) {
+      const updated = new Date(editDate);
+      updated.setHours(date.getHours(), date.getMinutes(), 0, 0);
+      setEditDate(updated);
+    }
   };
 
   const getDueStatusColor = (daysUntilDue: number) => {
@@ -244,19 +326,64 @@ export default function VetScreen() {
     );
   }
 
+  const renderDateTimePickers = (
+    date: Date,
+    showDate: boolean,
+    showTime: boolean,
+    setShowDate: (v: boolean) => void,
+    setShowTime: (v: boolean) => void,
+    handleDateChange: (event: DateTimePickerEvent, date?: Date) => void,
+    handleTimeChange: (event: DateTimePickerEvent, date?: Date) => void,
+  ) => (
+    <>
+      <View style={styles.dateTimeRow}>
+        <TouchableOpacity
+          style={styles.dateTimeButton}
+          onPress={() => setShowDate(!showDate)}
+          accessibilityLabel={`Pick date, currently ${formatDate(date.getTime())}`}
+          accessibilityRole="button"
+        >
+          <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
+          <Text style={styles.dateTimeButtonText}>{formatDate(date.getTime())}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.dateTimeButton}
+          onPress={() => setShowTime(!showTime)}
+          accessibilityLabel={`Pick time, currently ${formatTime(date.getTime())}`}
+          accessibilityRole="button"
+        >
+          <Ionicons name="time-outline" size={16} color={colors.text.secondary} />
+          <Text style={styles.dateTimeButtonText}>{formatTime(date.getTime())}</Text>
+        </TouchableOpacity>
+      </View>
+      {showDate && (
+        <DateTimePicker
+          value={date}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          onChange={handleDateChange}
+          minimumDate={new Date()}
+          accentColor={colors.accent.warm}
+        />
+      )}
+      {showTime && (
+        <DateTimePicker
+          value={date}
+          mode="time"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleTimeChange}
+          accentColor={colors.accent.warm}
+        />
+      )}
+    </>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.text.primary}
-          />
-        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -265,6 +392,8 @@ export default function VetScreen() {
             style={styles.addButton}
             onPress={() => setShowAddModal(true)}
             activeOpacity={0.8}
+            accessibilityLabel="Add new appointment"
+            accessibilityRole="button"
           >
             <Ionicons name="add" size={22} color={colors.text.inverse} />
           </TouchableOpacity>
@@ -273,11 +402,13 @@ export default function VetScreen() {
         {/* Recurring Care Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>RECURRING CARE</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">RECURRING CARE</Text>
             <TouchableOpacity
               style={styles.addSmallButton}
               onPress={() => setShowAddRecurringModal(true)}
               activeOpacity={0.8}
+              accessibilityLabel="Add recurring care item"
+              accessibilityRole="button"
             >
               <Ionicons name="add" size={16} color={colors.text.primary} />
             </TouchableOpacity>
@@ -310,6 +441,7 @@ export default function VetScreen() {
                       styles.recurringRow,
                       index < repeatingEvents.length - 1 && styles.recurringRowBorder,
                     ]}
+                    accessibilityLabel={`${event.title}, ${getDueStatusText(event.daysUntilDue)}, every ${event.intervalDays} days`}
                   >
                     <View style={styles.recurringContent}>
                       <Text style={styles.recurringTitle}>{event.title}</Text>
@@ -328,6 +460,8 @@ export default function VetScreen() {
                         ]}
                         onPress={() => handleMarkEventDone(event._id)}
                         activeOpacity={0.7}
+                        accessibilityLabel={`Mark ${event.title} as done`}
+                        accessibilityRole="button"
                       >
                         <Ionicons
                           name="checkmark"
@@ -339,6 +473,8 @@ export default function VetScreen() {
                         style={styles.deleteButton}
                         onPress={() => handleDeleteRecurringEvent(event._id)}
                         activeOpacity={0.7}
+                        accessibilityLabel={`Delete ${event.title}`}
+                        accessibilityRole="button"
                       >
                         <Ionicons name="trash-outline" size={16} color={colors.text.muted} />
                       </TouchableOpacity>
@@ -352,7 +488,7 @@ export default function VetScreen() {
 
         {/* Upcoming Appointments */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>VET VISITS</Text>
+          <Text style={styles.sectionTitleStandalone} accessibilityRole="header">VET VISITS</Text>
 
           {isAppointmentsLoading ? (
             <View style={styles.sectionLoadingContainer}>
@@ -369,21 +505,21 @@ export default function VetScreen() {
                 style={styles.emptyButton}
                 onPress={() => setShowAddModal(true)}
                 activeOpacity={0.8}
+                accessibilityLabel="Schedule a vet visit"
+                accessibilityRole="button"
               >
                 <Text style={styles.emptyButtonText}>SCHEDULE VISIT</Text>
               </TouchableOpacity>
             </View>
           ) : (
             upcomingAppointments.map((appointment, index) => (
-              <TouchableOpacity
+              <View
                 key={appointment._id}
                 style={[
                   styles.appointmentCard,
                   index === 0 && styles.appointmentCardNext,
                 ]}
-                onPress={() => handleMarkComplete(appointment._id, appointment.title)}
-                onLongPress={() => handleDeleteAppointment(appointment._id)}
-                activeOpacity={0.8}
+                accessibilityLabel={`${appointment.title}, ${formatDate(appointment.date)} at ${formatTime(appointment.date)}${appointment.location ? `, at ${appointment.location}` : ''}`}
               >
                 <View style={styles.appointmentDate}>
                   <Text style={[styles.appointmentDay, index === 0 && styles.appointmentDayNext]}>
@@ -412,10 +548,36 @@ export default function VetScreen() {
                   )}
                 </View>
 
-                <View style={styles.appointmentAction}>
-                  <Ionicons name="checkmark-circle-outline" size={22} color={colors.text.muted} />
+                <View style={styles.appointmentActions}>
+                  <TouchableOpacity
+                    onPress={() => handleEditAppointment(appointment)}
+                    activeOpacity={0.7}
+                    accessibilityLabel={`Edit ${appointment.title}`}
+                    accessibilityRole="button"
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="create-outline" size={20} color={colors.text.muted} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleMarkComplete(appointment._id, appointment.title)}
+                    activeOpacity={0.7}
+                    accessibilityLabel={`Mark ${appointment.title} as complete`}
+                    accessibilityRole="button"
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={22} color={colors.text.muted} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteAppointment(appointment._id)}
+                    activeOpacity={0.7}
+                    accessibilityLabel={`Delete ${appointment.title}`}
+                    accessibilityRole="button"
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="trash-outline" size={18} color={colors.text.muted} />
+                  </TouchableOpacity>
                 </View>
-              </TouchableOpacity>
+              </View>
             ))
           )}
         </View>
@@ -427,8 +589,10 @@ export default function VetScreen() {
               style={styles.pastHeader}
               onPress={() => setShowPast(!showPast)}
               activeOpacity={0.8}
+              accessibilityLabel={`Past visits, ${pastAppointments.length} total, tap to ${showPast ? 'hide' : 'show'}`}
+              accessibilityRole="button"
             >
-              <Text style={styles.sectionTitle}>PAST VISITS</Text>
+              <Text style={styles.sectionTitleStandalone} accessibilityRole="header">PAST VISITS</Text>
               <View style={styles.pastToggle}>
                 <Text style={styles.pastCount}>{pastAppointments.length}</Text>
                 <Ionicons
@@ -454,11 +618,6 @@ export default function VetScreen() {
             )}
           </View>
         )}
-
-        {/* Tip — minimal */}
-        <Text style={styles.tipText}>
-          Long press to delete. Tap to complete.
-        </Text>
       </ScrollView>
 
       {/* Add Appointment Modal */}
@@ -527,12 +686,15 @@ export default function VetScreen() {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.selectedDateDisplay}>
-                <Ionicons name="calendar-outline" size={16} color={colors.text.secondary} />
-                <Text style={styles.selectedDateText}>
-                  {formatDate(selectedDate.getTime())} at {formatTime(selectedDate.getTime())}
-                </Text>
-              </View>
+              {renderDateTimePickers(
+                selectedDate,
+                showDatePicker,
+                showTimePicker,
+                setShowDatePicker,
+                setShowTimePicker,
+                onDateChange,
+                onTimeChange,
+              )}
             </View>
 
             <View style={styles.inputGroup}>
@@ -554,6 +716,87 @@ export default function VetScreen() {
                 placeholderTextColor={colors.text.muted}
                 value={notes}
                 onChangeText={setNotes}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Edit Appointment Modal */}
+      <Modal
+        visible={showEditModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowEditModal(false)}>
+              <Text style={styles.modalCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Edit Appointment</Text>
+            <TouchableOpacity
+              onPress={handleSaveEdit}
+              disabled={isSubmitting || !editTitle.trim()}
+            >
+              <Text
+                style={[
+                  styles.modalSave,
+                  (!editTitle.trim() || isSubmitting) && styles.modalSaveDisabled,
+                ]}
+              >
+                {isSubmitting ? 'Saving...' : 'Update'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>APPOINTMENT TITLE</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., Annual Checkup"
+                placeholderTextColor={colors.text.muted}
+                value={editTitle}
+                onChangeText={setEditTitle}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>WHEN</Text>
+              {renderDateTimePickers(
+                editDate,
+                showEditDatePicker,
+                showEditTimePicker,
+                setShowEditDatePicker,
+                setShowEditTimePicker,
+                onEditDateChange,
+                onEditTimeChange,
+              )}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>LOCATION (OPTIONAL)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., Happy Paws Vet Clinic"
+                placeholderTextColor={colors.text.muted}
+                value={editLocation}
+                onChangeText={setEditLocation}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>NOTES (OPTIONAL)</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Any additional notes..."
+                placeholderTextColor={colors.text.muted}
+                value={editNotes}
+                onChangeText={setEditNotes}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
@@ -728,7 +971,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
+  // sectionTitle inside sectionHeader — no extra marginBottom
   sectionTitle: {
+    ...typography.label,
+    color: colors.text.secondary,
+  },
+  // sectionTitle used standalone — needs its own marginBottom
+  sectionTitleStandalone: {
     ...typography.label,
     color: colors.text.secondary,
     marginBottom: spacing.md,
@@ -741,7 +990,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border.medium,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.md,
   },
 
   // Recurring Care — row separators instead of boxed cards
@@ -856,7 +1104,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  // Appointment Card
+  // Appointment Card — now with explicit action buttons
   appointmentCard: {
     flexDirection: 'row',
     paddingVertical: spacing.md,
@@ -920,8 +1168,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontStyle: 'italic',
   },
-  appointmentAction: {
+  appointmentActions: {
     justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
     paddingLeft: spacing.sm,
   },
 
@@ -964,14 +1214,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.text.muted,
     marginTop: 2,
-  },
-
-  // Tip
-  tipText: {
-    ...typography.caption,
-    color: colors.text.muted,
-    textAlign: 'center',
-    marginTop: spacing.md,
   },
 
   // Modal
@@ -1051,13 +1293,25 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.text.secondary,
   },
-  selectedDateDisplay: {
+
+  // Date/Time picker buttons
+  dateTimeRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  dateTimeButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderWidth: hairline,
+    borderColor: colors.border.medium,
+    borderRadius: borderRadius.sm,
   },
-  selectedDateText: {
+  dateTimeButtonText: {
     ...typography.bodySmall,
     fontWeight: '500',
     color: colors.text.primary,

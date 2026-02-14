@@ -1,19 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  RefreshControl,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from 'convex/react';
+import * as Haptics from 'expo-haptics';
 import { api } from '../../convex/_generated/api';
 import { useCurrentUser } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, shadows, typography, fonts, hairline } from '../../lib/theme';
+import { formatDate, formatTime } from '../../lib/utils';
 
 // Get today's start-of-day timestamp in local timezone
 const getTodayTimestamp = () => {
@@ -51,7 +53,35 @@ const SHIFT_CONFIG: Record<ShiftType, ShiftConfig> = {
 
 export default function HomeScreen() {
   const { user, household } = useCurrentUser();
-  const [refreshing, setRefreshing] = useState(false);
+
+  // Undo toast state
+  const [undoToast, setUndoToast] = useState<{ shiftId: string; label: string } | null>(null);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showUndoToast = useCallback((shiftId: string, label: string) => {
+    if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    setUndoToast({ shiftId, label });
+    Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    toastTimeout.current = setTimeout(() => {
+      Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+        setUndoToast(null);
+      });
+    }, 4000);
+  }, [toastOpacity]);
+
+  const dismissUndoToast = useCallback(() => {
+    if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    Animated.timing(toastOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+      setUndoToast(null);
+    });
+  }, [toastOpacity]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeout.current) clearTimeout(toastTimeout.current);
+    };
+  }, []);
 
   const todayTimestamp = getTodayTimestamp();
 
@@ -79,41 +109,20 @@ export default function HomeScreen() {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    await logShift({
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    const result = await logShift({
       type,
       clientDate: startOfDay.getTime(),
     });
+
+    showUndoToast(result as unknown as string, SHIFT_CONFIG[type].label);
   };
 
   const handleUndoShift = async (shiftId: NonNullable<typeof amShift>['_id']) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    dismissUndoToast();
     await uncompleteShift({ shiftId });
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setRefreshing(false);
-  };
-
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  };
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return 'Tomorrow';
-    }
-    return date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
   };
 
   const getGreeting = () => {
@@ -147,6 +156,14 @@ export default function HomeScreen() {
         style={[styles.shiftCard, isCompleted && styles.shiftCardComplete]}
         onPress={() => isCompleted && shift ? handleUndoShift(shift._id) : handleLogShift(type)}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={
+          isCompleted
+            ? `${config.label}, completed by ${shift?.completedByUserName} at ${shift?.completedAt ? formatTime(shift.completedAt) : ''}, tap to undo`
+            : shift
+              ? `${config.label}, assigned to ${shift.assignedUserName}, tap to mark as done`
+              : `${config.label}, unassigned, tap to mark as done`
+        }
       >
         <View style={styles.shiftCardHeader}>
           <Ionicons name={config.icon} size={18} color={config.color} style={{ marginRight: spacing.sm }} />
@@ -203,13 +220,6 @@ export default function HomeScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.text.primary}
-          />
-        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -303,6 +313,25 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Undo Toast */}
+      {undoToast && (
+        <Animated.View style={[styles.toast, { opacity: toastOpacity }]}>
+          <Text style={styles.toastText}>Shift completed</Text>
+          <TouchableOpacity
+            onPress={() => {
+              const shift = undoToast.shiftId === 'am' ? amShift : pmShift;
+              // Find the most recently completed shift to undo
+              const shiftToUndo = amShift?.completed ? amShift : pmShift?.completed ? pmShift : null;
+              if (shiftToUndo) handleUndoShift(shiftToUndo._id);
+            }}
+            accessibilityLabel="Undo shift completion"
+            accessibilityRole="button"
+          >
+            <Text style={styles.toastUndo}>Undo</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -597,5 +626,30 @@ const styles = StyleSheet.create({
   appointmentLocationText: {
     ...typography.caption,
     color: colors.text.muted,
+  },
+
+  // Undo Toast
+  toast: {
+    position: 'absolute',
+    bottom: spacing.xxl,
+    left: spacing.lg,
+    right: spacing.lg,
+    backgroundColor: colors.text.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  toastText: {
+    ...typography.bodySmall,
+    color: colors.text.inverse,
+    fontWeight: '500',
+  },
+  toastUndo: {
+    ...typography.button,
+    fontSize: 13,
+    color: colors.accent.warm,
   },
 });

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  RefreshControl,
   ActivityIndicator,
   Alert,
   Share,
@@ -17,15 +16,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation } from 'convex/react';
+import * as Haptics from 'expo-haptics';
 import { api } from '../../convex/_generated/api';
 import { useCurrentUser } from '../../context/AuthContext';
 import { useClerk } from '@clerk/clerk-expo';
 import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
+import { getInitials, getMemberColor } from '../../lib/utils';
 
 export default function HouseholdScreen() {
   const { user, household } = useCurrentUser();
   const { signOut } = useClerk();
-  const [refreshing, setRefreshing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editName, setEditName] = useState('');
@@ -39,16 +39,11 @@ export default function HouseholdScreen() {
     household ? {} : 'skip'
   );
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setRefreshing(false);
-  };
-
   const handleCopyInviteCode = async () => {
     if (!household) return;
 
     try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await Share.share({
         message: `Join my household "${household.name}" on Dog Duty! Use invite code: ${household.inviteCode}`,
       });
@@ -109,30 +104,6 @@ export default function HouseholdScreen() {
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  // Muted editorial member colors
-  const getMemberColor = (name: string) => {
-    const memberColors = [
-      { bg: '#F3F0EA', text: '#8A7B6B' }, // Oat
-      { bg: '#EDEAEF', text: '#736880' }, // Blueberry
-      { bg: '#E8EDE8', text: '#5E7A65' }, // Herb
-      { bg: '#F0EAEA', text: '#7B5E5E' }, // Lingonberry
-      { bg: '#E8EAED', text: '#5E6875' }, // Stone
-      { bg: '#EDEBE5', text: '#756E5E' }, // Rye
-    ];
-
-    const index = name.charCodeAt(0) % memberColors.length;
-    return memberColors[index];
-  };
-
   // Loading states: undefined === loading, null === empty
   const isMembersLoading = members === undefined;
 
@@ -153,6 +124,8 @@ export default function HouseholdScreen() {
           onPress={handleOpenEdit}
           activeOpacity={0.6}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityLabel="Household settings"
+          accessibilityRole="button"
         >
           <Ionicons name="settings-outline" size={20} color={colors.text.secondary} />
         </TouchableOpacity>
@@ -162,13 +135,6 @@ export default function HouseholdScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.text.primary}
-          />
-        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -180,13 +146,15 @@ export default function HouseholdScreen() {
 
         {/* Invite Code */}
         <View style={styles.inviteSection}>
-          <Text style={styles.sectionTitle}>INVITE CODE</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">INVITE CODE</Text>
           <View style={styles.inviteRow}>
-            <Text style={styles.codeText}>{household.inviteCode}</Text>
+            <Text style={styles.codeText} accessibilityLabel={`Invite code: ${household.inviteCode.split('').join(' ')}`}>{household.inviteCode}</Text>
             <TouchableOpacity
               style={styles.shareButton}
               onPress={handleCopyInviteCode}
               activeOpacity={0.8}
+              accessibilityLabel="Share invite code"
+              accessibilityRole="button"
             >
               <Ionicons
                 name={copied ? 'checkmark' : 'share-outline'}
