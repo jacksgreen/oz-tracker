@@ -29,10 +29,6 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.dogduty.app"
     },
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
-    },
     "plugins": [
       "expo-router",
       [
