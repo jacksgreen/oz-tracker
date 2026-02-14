@@ -83,6 +83,25 @@ export const getByInviteCode = query({
   },
 });
 
+export const update = mutation({
+  args: {
+    name: v.optional(v.string()),
+    dogName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { household } = await getAuthUserWithHousehold(ctx);
+
+    const updates: Record<string, string> = {};
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.dogName !== undefined) updates.dogName = args.dogName;
+
+    if (Object.keys(updates).length === 0) return household;
+
+    await ctx.db.patch(household._id, updates);
+    return await ctx.db.get(household._id);
+  },
+});
+
 export const getMembers = query({
   handler: async (ctx) => {
     const { household } = await getAuthUserWithHousehold(ctx);
