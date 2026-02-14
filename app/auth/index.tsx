@@ -41,6 +41,7 @@ export default function AuthScreen() {
   const [confirmedCode, setConfirmedCode] = useState('');
   const [createdInviteCode, setCreatedInviteCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProvider, setLoadingProvider] = useState<'oauth_google' | 'oauth_apple' | null>(null);
   const [error, setError] = useState('');
 
   const lookedUpHousehold = useQuery(
@@ -57,12 +58,13 @@ export default function AuthScreen() {
     }
   }, [isSignedIn, user, household]);
 
-  const handleGoogleSignIn = useCallback(async () => {
+  const handleSSOSignIn = useCallback(async (strategy: 'oauth_google' | 'oauth_apple') => {
     setIsLoading(true);
+    setLoadingProvider(strategy);
     setError('');
     try {
       const { createdSessionId, setActive } = await startSSOFlow({
-        strategy: 'oauth_google',
+        strategy,
         redirectUrl: Linking.createURL('/(tabs)'),
       });
 
@@ -70,9 +72,11 @@ export default function AuthScreen() {
         await setActive!({ session: createdSessionId });
       }
     } catch (e) {
-      setError('Failed to sign in with Google. Please try again.');
+      const provider = strategy === 'oauth_google' ? 'Google' : 'Apple';
+      setError(`Failed to sign in with ${provider}. Please try again.`);
     } finally {
       setIsLoading(false);
+      setLoadingProvider(null);
     }
   }, [startSSOFlow]);
 
@@ -200,18 +204,36 @@ export default function AuthScreen() {
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
+      {Platform.OS === 'ios' && (
+        <TouchableOpacity
+          style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+          onPress={() => handleSSOSignIn('oauth_apple')}
+          disabled={isLoading}
+          activeOpacity={0.8}
+        >
+          {loadingProvider === 'oauth_apple' ? (
+            <ActivityIndicator color={colors.text.inverse} />
+          ) : (
+            <>
+              <Ionicons name="logo-apple" size={20} color={colors.text.inverse} />
+              <Text style={styles.primaryButtonText}>CONTINUE WITH APPLE</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity
-        style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
-        onPress={handleGoogleSignIn}
+        style={[styles.secondaryButton, isLoading && styles.buttonDisabled]}
+        onPress={() => handleSSOSignIn('oauth_google')}
         disabled={isLoading}
         activeOpacity={0.8}
       >
-        {isLoading ? (
-          <ActivityIndicator color={colors.text.inverse} />
+        {loadingProvider === 'oauth_google' ? (
+          <ActivityIndicator color={colors.text.primary} />
         ) : (
           <>
-            <Ionicons name="logo-google" size={18} color={colors.text.inverse} />
-            <Text style={styles.primaryButtonText}>CONTINUE WITH GOOGLE</Text>
+            <Ionicons name="logo-google" size={18} color={colors.text.primary} />
+            <Text style={styles.secondaryButtonText}>CONTINUE WITH GOOGLE</Text>
           </>
         )}
       </TouchableOpacity>
@@ -627,6 +649,22 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     ...typography.button,
     color: colors.text.inverse,
+  },
+  secondaryButton: {
+    height: 52,
+    backgroundColor: 'transparent',
+    borderRadius: borderRadius.md,
+    borderWidth: hairline,
+    borderColor: colors.border.medium,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  secondaryButtonText: {
+    ...typography.button,
+    color: colors.text.primary,
   },
   buttonDisabled: {
     opacity: 0.6,
