@@ -170,7 +170,7 @@ export default function HouseholdScreen() {
         <View style={styles.header}>
           <Text style={styles.householdName}>{household.name}</Text>
           <Text style={styles.headerSubtitle}>
-            Taking care of {household.dogName} together
+            {household.dogName}
           </Text>
         </View>
 
