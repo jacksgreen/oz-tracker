@@ -10,6 +10,7 @@ import {
   scheduleAllRecurringEventReminders,
   cleanupExpiredReminders,
 } from '../lib/notifications';
+import { isWalkthroughComplete } from '../lib/useFirstRun';
 
 const NotificationContext = createContext(null);
 
@@ -31,10 +32,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     household ? {} : 'skip'
   );
 
-  // Initialize notifications on mount
+  // Initialize notifications on mount (defer permission for first-run users)
   useEffect(() => {
     const setup = async () => {
-      await requestNotificationPermissions();
+      const walkthroughDone = await isWalkthroughComplete();
+      if (walkthroughDone) {
+        await requestNotificationPermissions();
+      }
       await cleanupExpiredReminders();
     };
 

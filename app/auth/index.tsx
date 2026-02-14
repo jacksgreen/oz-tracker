@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Share,
+  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useCurrentUser } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
+import { ProgressDots } from '../../components/ProgressDots';
 import * as Linking from 'expo-linking';
 import * as Clipboard from 'expo-clipboard';
 
@@ -49,7 +51,7 @@ export default function AuthScreen() {
   // Redirect if already authenticated with household
   React.useEffect(() => {
     if (isSignedIn && user && household) {
-      router.replace('/(tabs)');
+      router.replace('/');
     } else if (isSignedIn && user && !household) {
       setStep('household-choice');
     }
@@ -118,6 +120,22 @@ export default function AuthScreen() {
     }
   };
 
+  // Fade animation for step transitions
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const prevStepRef = useRef(step);
+
+  useEffect(() => {
+    if (prevStepRef.current !== step) {
+      prevStepRef.current = step;
+      fadeAnim.setValue(0);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [step, fadeAnim]);
+
   const [codeCopied, setCodeCopied] = useState(false);
 
   const handleShareCreatedCode = async () => {
@@ -145,6 +163,21 @@ export default function AuthScreen() {
         </Text>
       </View>
 
+      <View style={styles.featureList}>
+        <View style={styles.featureItem}>
+          <Ionicons name="people-outline" size={18} color={colors.text.secondary} />
+          <Text style={styles.featureText}>Never wonder if the dog's been walked</Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Ionicons name="checkmark-circle-outline" size={18} color={colors.text.secondary} />
+          <Text style={styles.featureText}>Everyone knows whose turn it is, every day</Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Ionicons name="heart-outline" size={18} color={colors.text.secondary} />
+          <Text style={styles.featureText}>Nothing falls through the cracks</Text>
+        </View>
+      </View>
+
       <TouchableOpacity
         style={styles.primaryButton}
         onPress={() => setStep('signin')}
@@ -153,21 +186,6 @@ export default function AuthScreen() {
         <Text style={styles.primaryButtonText}>GET STARTED</Text>
         <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
       </TouchableOpacity>
-
-      <View style={styles.featureList}>
-        <View style={styles.featureItem}>
-          <Ionicons name="people-outline" size={18} color={colors.text.secondary} />
-          <Text style={styles.featureText}>Coordinate walks and meals with your household</Text>
-        </View>
-        <View style={styles.featureItem}>
-          <Ionicons name="calendar-outline" size={18} color={colors.text.secondary} />
-          <Text style={styles.featureText}>Schedule shifts so everyone knows who's on duty</Text>
-        </View>
-        <View style={styles.featureItem}>
-          <Ionicons name="medical-outline" size={18} color={colors.text.secondary} />
-          <Text style={styles.featureText}>Track vet visits, flea meds, and recurring care</Text>
-        </View>
-      </View>
     </View>
   );
 
@@ -288,7 +306,7 @@ export default function AuthScreen() {
             {household ? (
               <TouchableOpacity
                 style={styles.primaryButton}
-                onPress={() => router.replace('/(tabs)')}
+                onPress={() => router.replace('/')}
                 activeOpacity={0.8}
               >
                 <Text style={styles.primaryButtonText}>START TRACKING</Text>
@@ -451,21 +469,43 @@ export default function AuthScreen() {
     );
   };
 
+  const dotConfig: Record<AuthStep, number | null> = {
+    'welcome': null,
+    'signin': 0,
+    'household-choice': 1,
+    'create-household': 2,
+    'join-household': 2,
+    'confirm-join': 2,
+  };
+
   const renderStep = () => {
-    switch (step) {
-      case 'welcome':
-        return renderWelcome();
-      case 'signin':
-        return renderSignIn();
-      case 'household-choice':
-        return renderHouseholdChoice();
-      case 'create-household':
-        return renderCreateHousehold();
-      case 'join-household':
-        return renderJoinHousehold();
-      case 'confirm-join':
-        return renderConfirmJoin();
-    }
+    const content = (() => {
+      switch (step) {
+        case 'welcome':
+          return renderWelcome();
+        case 'signin':
+          return renderSignIn();
+        case 'household-choice':
+          return renderHouseholdChoice();
+        case 'create-household':
+          return renderCreateHousehold();
+        case 'join-household':
+          return renderJoinHousehold();
+        case 'confirm-join':
+          return renderConfirmJoin();
+      }
+    })();
+
+    const activeDot = dotConfig[step];
+
+    return (
+      <>
+        {activeDot !== null && <ProgressDots total={3} activeIndex={activeDot} />}
+        <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
+          {content}
+        </Animated.View>
+      </>
+    );
   };
 
   return (
@@ -522,8 +562,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   featureList: {
-    marginTop: spacing.xxl,
     gap: spacing.lg,
+    marginBottom: spacing.xl,
   },
   featureItem: {
     flexDirection: 'row',
