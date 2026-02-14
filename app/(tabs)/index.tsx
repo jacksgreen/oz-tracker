@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import * as Haptics from 'expo-haptics';
 import { api } from '../../convex/_generated/api';
 import { useCurrentUser } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, shadows, typography, fonts, hairline } from '../../lib/theme';
-import { formatDate, formatTime } from '../../lib/utils';
+import { formatDate, formatTime, getMemberColor, getInitials } from '../../lib/utils';
 
 // Get today's start-of-day timestamp in local timezone
 const getTodayTimestamp = () => {
@@ -96,6 +96,17 @@ export default function HomeScreen() {
       if (toastTimeout.current) clearTimeout(toastTimeout.current);
     };
   }, []);
+
+  const members = useQuery(
+    api.households.getMembers,
+    household ? {} : 'skip'
+  );
+
+  const memberMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    members?.forEach((m) => { map[m._id] = m.name; });
+    return map;
+  }, [members]);
 
   const todayTimestamp = getTodayTimestamp();
 
@@ -187,9 +198,9 @@ export default function HomeScreen() {
         accessibilityRole="button"
         accessibilityLabel={
           isCompleted
-            ? `${config.label}, completed by ${shift?.completedByUserName} at ${shift?.completedAt ? formatTime(shift.completedAt) : ''}, tap to undo`
+            ? `${config.label}, completed by ${shift?.completedByUserId ? (memberMap[shift.completedByUserId] ?? 'Someone') : 'Someone'} at ${shift?.completedAt ? formatTime(shift.completedAt) : ''}, tap to undo`
             : shift
-              ? `${config.label}, assigned to ${shift.assignedUserName}, tap to mark as done`
+              ? `${config.label}, assigned to ${memberMap[shift.assignedUserId] ?? 'Someone'}, tap to mark as done`
               : `${config.label}, unassigned, tap to mark as done`
         }
       >
@@ -206,7 +217,7 @@ export default function HomeScreen() {
             <View style={styles.completedBadge}>
               <Ionicons name="checkmark" size={15} color={colors.status.success} />
             </View>
-            <Text style={styles.statusNameComplete}>{shift.completedByUserName}</Text>
+            <Text style={styles.statusNameComplete}>{shift.completedByUserId ? (memberMap[shift.completedByUserId] ?? 'Someone') : 'Someone'}</Text>
             <View style={styles.statusDot} />
             <Text style={styles.statusTime}>{formatTime(shift.completedAt!)}</Text>
           </View>
@@ -214,12 +225,12 @@ export default function HomeScreen() {
           <View style={styles.shiftStatusRow}>
             {shift ? (
               <>
-                <View style={styles.assignedBadge}>
-                  <Text style={styles.assignedInitial}>
-                    {shift.assignedUserName.charAt(0)}
+                <View style={[styles.assignedBadge, { backgroundColor: getMemberColor(memberMap[shift.assignedUserId] ?? '').bg }]}>
+                  <Text style={[styles.assignedInitial, { color: getMemberColor(memberMap[shift.assignedUserId] ?? '').text }]}>
+                    {getInitials(memberMap[shift.assignedUserId] ?? '?')}
                   </Text>
                 </View>
-                <Text style={styles.statusName}>{shift.assignedUserName}</Text>
+                <Text style={styles.statusName}>{memberMap[shift.assignedUserId] ?? 'Someone'}</Text>
               </>
             ) : (
               <>
@@ -473,14 +484,12 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.accent.light,
     justifyContent: 'center',
     alignItems: 'center',
   },
   assignedInitial: {
     fontFamily: fonts.serif,
     fontSize: 14,
-    color: colors.text.primary,
   },
 
   // Pending unassigned badge

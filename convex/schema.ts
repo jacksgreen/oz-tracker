@@ -25,12 +25,10 @@ export default defineSchema({
     date: v.number(), // Start of day timestamp (for the scheduled date)
     // Assignment info
     assignedUserId: v.id("users"),
-    assignedUserName: v.string(),
     // Completion info (optional until completed)
     completed: v.boolean(),
     completedAt: v.optional(v.number()), // Actual completion timestamp
     completedByUserId: v.optional(v.id("users")),
-    completedByUserName: v.optional(v.string()),
     // Optional extras
     notes: v.optional(v.string()),
   }).index("by_household_date", ["householdId", "date"]),

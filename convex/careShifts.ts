@@ -7,7 +7,6 @@ import { getAuthUser, getAuthUserWithHousehold } from "./auth";
 export const schedule = mutation({
   args: {
     assignedUserId: v.id("users"),
-    assignedUserName: v.string(),
     type: v.union(v.literal("am"), v.literal("pm")),
     date: v.number(), // Start of day timestamp
   },
@@ -23,10 +22,12 @@ export const schedule = mutation({
       .filter((q) => q.eq(q.field("type"), args.type))
       .first();
 
+    const assignedUser = await ctx.db.get(args.assignedUserId);
+    const assignedUserName = assignedUser?.name ?? "Someone";
+
     if (existing) {
       await ctx.db.patch(existing._id, {
         assignedUserId: args.assignedUserId,
-        assignedUserName: args.assignedUserName,
       });
 
       const shiftLabel = args.type === "am" ? "Morning" : "Evening";
@@ -34,7 +35,7 @@ export const schedule = mutation({
         householdId: household._id,
         excludeUserId: user._id,
         title: "Shift Assigned",
-        body: `${args.assignedUserName} will handle ${household.dogName}'s ${shiftLabel.toLowerCase()} shift.`,
+        body: `${assignedUserName} will handle ${household.dogName}'s ${shiftLabel.toLowerCase()} shift.`,
       });
 
       return existing._id;
@@ -46,7 +47,6 @@ export const schedule = mutation({
       type: args.type,
       date: args.date,
       assignedUserId: args.assignedUserId,
-      assignedUserName: args.assignedUserName,
       completed: false,
     });
 
@@ -55,7 +55,7 @@ export const schedule = mutation({
       householdId: household._id,
       excludeUserId: user._id,
       title: "Shift Assigned",
-      body: `${args.assignedUserName} will handle ${household.dogName}'s ${shiftLabel.toLowerCase()} shift.`,
+      body: `${assignedUserName} will handle ${household.dogName}'s ${shiftLabel.toLowerCase()} shift.`,
     });
 
     return id;
@@ -82,7 +82,6 @@ export const complete = mutation({
       completed: true,
       completedAt: Date.now(),
       completedByUserId: user._id,
-      completedByUserName: user.name,
       notes: args.notes,
     });
 
@@ -114,7 +113,6 @@ export const uncomplete = mutation({
       completed: false,
       completedAt: undefined,
       completedByUserId: undefined,
-      completedByUserName: undefined,
       notes: undefined,
     });
   },
@@ -147,7 +145,6 @@ export const logNow = mutation({
         completed: true,
         completedAt: Date.now(),
         completedByUserId: user._id,
-        completedByUserName: user.name,
         notes: args.notes,
       });
       resultId = existing._id;
@@ -157,11 +154,9 @@ export const logNow = mutation({
         type: args.type,
         date: dateTimestamp,
         assignedUserId: user._id,
-        assignedUserName: user.name,
         completed: true,
         completedAt: Date.now(),
         completedByUserId: user._id,
-        completedByUserName: user.name,
         notes: args.notes,
       });
     }

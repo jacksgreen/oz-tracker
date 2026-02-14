@@ -106,7 +106,7 @@ export default function ScheduleScreen() {
     setModalVisible(true);
   };
 
-  const handleAssign = async (memberId: Id<'users'>, memberName: string) => {
+  const handleAssign = async (memberId: Id<'users'>) => {
     if (!selectedDate || !selectedShift || !household) return;
     const dateTimestamp = new Date(selectedDate).setHours(0, 0, 0, 0);
 
@@ -114,7 +114,6 @@ export default function ScheduleScreen() {
 
     await scheduleShift({
       assignedUserId: memberId,
-      assignedUserName: memberName,
       type: selectedShift,
       date: dateTimestamp,
     });
@@ -161,6 +160,12 @@ export default function ScheduleScreen() {
     }
     return `${startMonth} ${startDay} - ${endMonth} ${endDay}`;
   };
+
+  const memberMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    members?.forEach((m) => { map[m._id] = m.name; });
+    return map;
+  }, [members]);
 
   // Loading states: undefined === loading, null === empty
   const isGridLoading = careShifts === undefined;
@@ -276,9 +281,9 @@ export default function ScheduleScreen() {
                         accessibilityLabel={
                           `${date.toLocaleDateString('en-US', { weekday: 'long' })} ${config.shortLabel} shift` +
                           (isCompleted
-                            ? `, completed by ${entry?.assignedUserName}`
+                            ? `, completed by ${memberMap[entry?.assignedUserId] ?? 'Someone'}`
                             : entry
-                              ? `, assigned to ${entry.assignedUserName}, tap to reassign`
+                              ? `, assigned to ${memberMap[entry.assignedUserId] ?? 'Someone'}, tap to reassign`
                               : isPast
                                 ? ', past'
                                 : ', unassigned, tap to assign')
@@ -294,9 +299,9 @@ export default function ScheduleScreen() {
                               />
                             </View>
                           ) : (
-                            <View style={[styles.assignedBadge, { backgroundColor: getMemberColor(entry.assignedUserName).bg }]}>
-                              <Text style={[styles.assignedInitials, { color: getMemberColor(entry.assignedUserName).text }]}>
-                                {getInitials(entry.assignedUserName)}
+                            <View style={[styles.assignedBadge, { backgroundColor: getMemberColor(memberMap[entry.assignedUserId] ?? '').bg }]}>
+                              <Text style={[styles.assignedInitials, { color: getMemberColor(memberMap[entry.assignedUserId] ?? '').text }]}>
+                                {getInitials(memberMap[entry.assignedUserId] ?? '?')}
                               </Text>
                             </View>
                           )
@@ -418,7 +423,7 @@ export default function ScheduleScreen() {
                           styles.memberOption,
                           isAssigned && styles.memberOptionSelected,
                         ]}
-                        onPress={() => handleAssign(member._id, member.name)}
+                        onPress={() => handleAssign(member._id)}
                       >
                         <View
                           style={[
