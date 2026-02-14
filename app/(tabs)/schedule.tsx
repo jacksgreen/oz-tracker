@@ -15,7 +15,7 @@ import { useQuery, useMutation } from 'convex/react';
 import * as Haptics from 'expo-haptics';
 import { api } from '../../convex/_generated/api';
 import { useCurrentUser } from '../../context/AuthContext';
-import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
+import { colors, spacing, borderRadius, shadows, typography, fonts, hairline } from '../../lib/theme';
 import { getInitials, getMemberColor } from '../../lib/utils';
 import { Id } from '../../convex/_generated/dataModel';
 
@@ -387,6 +387,7 @@ export default function ScheduleScreen() {
           onPress={() => setModalVisible(false)}
         >
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHandle} />
             {selectedShift && selectedDate && (
               <>
                 <View style={styles.modalHeader}>
@@ -534,9 +535,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     marginHorizontal: spacing.md,
     marginBottom: spacing.md,
-    borderWidth: hairline,
-    borderColor: colors.border.light,
-    borderRadius: borderRadius.sm,
   },
   navButton: {
     width: 36,
@@ -549,32 +547,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   weekLabel: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontFamily: fonts.serif,
+    fontSize: 17,
     color: colors.text.primary,
   },
   todayButton: {
     marginTop: 4,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderWidth: hairline,
-    borderColor: colors.text.primary,
+    backgroundColor: colors.text.primary,
     borderRadius: borderRadius.sm,
   },
   todayButtonText: {
     ...typography.caption,
-    fontWeight: '500',
-    color: colors.text.primary,
+    fontWeight: '600',
+    color: colors.text.inverse,
+    letterSpacing: 1,
   },
 
   // Grid
   gridContainer: {
     borderWidth: hairline,
     borderColor: colors.border.light,
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.lg,
     padding: spacing.sm,
     marginBottom: spacing.lg,
     backgroundColor: colors.background.card,
+    ...shadows.sm,
   },
   dayHeaderRow: {
     flexDirection: 'row',
@@ -591,7 +590,7 @@ const styles = StyleSheet.create({
   },
   dayHeaderToday: {
     backgroundColor: colors.text.primary,
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.md,
   },
   dayName: {
     fontSize: 10,
@@ -636,7 +635,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     marginHorizontal: 1,
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.md,
     backgroundColor: colors.background.muted,
     justifyContent: 'center',
     alignItems: 'center',
@@ -683,17 +682,17 @@ const styles = StyleSheet.create({
   // Empty State
   emptyState: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.xl,
     marginBottom: spacing.md,
   },
   emptyStateTitle: {
-    ...typography.displaySmall,
-    color: colors.text.primary,
+    ...typography.displayItalic,
+    color: colors.text.secondary,
     marginBottom: spacing.xs,
   },
   emptyStateSubtext: {
     ...typography.bodySmall,
-    color: colors.text.secondary,
+    color: colors.text.muted,
     textAlign: 'center',
   },
 
@@ -784,7 +783,16 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
     padding: spacing.lg,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.xxl,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border.medium,
+    alignSelf: 'center',
+    marginBottom: spacing.md,
   },
   modalHeader: {
     marginBottom: spacing.lg,

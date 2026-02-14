@@ -158,8 +158,8 @@ export default function HouseholdScreen() {
             >
               <Ionicons
                 name={copied ? 'checkmark' : 'share-outline'}
-                size={16}
-                color={copied ? colors.status.success : colors.text.primary}
+                size={14}
+                color={copied ? colors.accent.warm : colors.text.inverse}
               />
               <Text style={[styles.shareButtonText, copied && styles.shareButtonTextCopied]}>
                 {copied ? 'Shared' : 'Share'}
@@ -362,29 +362,27 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   codeText: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontFamily: fonts.serif,
+    fontSize: 26,
     color: colors.text.primary,
-    letterSpacing: 3,
-    fontFamily: 'monospace',
+    letterSpacing: 4,
   },
   shareButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
+    gap: 6,
+    paddingVertical: 6,
     paddingHorizontal: spacing.md,
-    borderWidth: hairline,
-    borderColor: colors.text.primary,
+    backgroundColor: colors.text.primary,
     borderRadius: borderRadius.sm,
   },
   shareButtonText: {
     ...typography.button,
-    fontSize: 12,
-    color: colors.text.primary,
+    fontSize: 11,
+    color: colors.text.inverse,
   },
   shareButtonTextCopied: {
-    color: colors.status.success,
+    color: colors.accent.warm,
   },
   inviteHint: {
     ...typography.caption,
@@ -450,15 +448,16 @@ const styles = StyleSheet.create({
     color: colors.text.muted,
   },
   youBadge: {
-    backgroundColor: colors.accent.warm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
+    borderWidth: hairline,
+    borderColor: colors.border.medium,
     borderRadius: borderRadius.sm,
   },
   youBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.text.inverse,
+    ...typography.caption,
+    fontWeight: '500',
+    color: colors.text.secondary,
     letterSpacing: 0.5,
   },
 
@@ -481,7 +480,8 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   modalTitle: {
-    ...typography.displaySmall,
+    fontFamily: fonts.serif,
+    fontSize: 18,
     color: colors.text.primary,
   },
   modalSaveText: {
@@ -521,10 +521,12 @@ const styles = StyleSheet.create({
   // Sign Out — understated
   signOutButton: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.xl,
+    marginTop: spacing.lg,
   },
   signOutText: {
-    ...typography.bodySmall,
+    ...typography.caption,
     color: colors.text.muted,
+    letterSpacing: 1,
   },
 });

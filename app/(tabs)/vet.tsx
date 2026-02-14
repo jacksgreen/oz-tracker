@@ -18,7 +18,7 @@ import * as Haptics from 'expo-haptics';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { api } from '../../convex/_generated/api';
 import { useCurrentUser } from '../../context/AuthContext';
-import { colors, spacing, borderRadius, typography, fonts, hairline } from '../../lib/theme';
+import { colors, spacing, borderRadius, shadows, typography, fonts, hairline } from '../../lib/theme';
 import { formatDate, formatTime } from '../../lib/utils';
 import { Id } from '../../convex/_generated/dataModel';
 
@@ -1007,8 +1007,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   recurringEmptyTitle: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontFamily: fonts.serif,
+    fontSize: 16,
     color: colors.text.secondary,
     marginBottom: 2,
   },
@@ -1016,11 +1016,14 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.text.muted,
   },
-  recurringList: {},
+  recurringList: {
+    borderTopWidth: hairline,
+    borderTopColor: colors.border.light,
+  },
   recurringRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: 14,
   },
   recurringRowBorder: {
     borderBottomWidth: hairline,
@@ -1030,8 +1033,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   recurringTitle: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontFamily: fonts.serif,
+    fontSize: 16,
     color: colors.text.primary,
   },
   recurringDue: {
@@ -1059,40 +1062,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   markDoneButtonDue: {
-    backgroundColor: colors.status.warning,
-    borderColor: colors.status.warning,
+    backgroundColor: colors.text.primary,
+    borderColor: colors.text.primary,
   },
   deleteButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    opacity: 0.5,
   },
 
   // Empty State
   emptyCard: {
     alignItems: 'center',
-    paddingVertical: spacing.xl,
-    borderTopWidth: hairline,
-    borderTopColor: colors.border.light,
-    borderBottomWidth: hairline,
-    borderBottomColor: colors.border.light,
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.lg,
   },
   emptyText: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontFamily: fonts.serif,
+    fontSize: 18,
     color: colors.text.secondary,
     marginTop: spacing.md,
   },
   emptySubtext: {
-    ...typography.caption,
+    ...typography.bodySmall,
     color: colors.text.muted,
     marginTop: spacing.xs,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
+    textAlign: 'center',
   },
   emptyButton: {
-    paddingVertical: spacing.sm,
+    paddingVertical: 10,
     paddingHorizontal: spacing.lg,
     borderWidth: hairline,
     borderColor: colors.text.primary,
@@ -1104,31 +1106,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  // Appointment Card — now with explicit action buttons
+  // Appointment Card
   appointmentCard: {
     flexDirection: 'row',
-    paddingVertical: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: hairline,
     borderColor: colors.border.light,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
+    paddingVertical: spacing.md,
     backgroundColor: colors.background.card,
+    ...shadows.sm,
   },
   appointmentCardNext: {
     borderLeftWidth: 3,
     borderLeftColor: colors.accent.warm,
   },
   appointmentDate: {
-    width: 44,
+    width: 48,
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: spacing.md,
-    paddingTop: 2,
   },
   appointmentDay: {
     fontFamily: fonts.serif,
-    fontSize: 24,
+    fontSize: 28,
     color: colors.text.primary,
+    lineHeight: 32,
   },
   appointmentDayNext: {
     color: colors.accent.warm,
@@ -1138,15 +1142,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.text.secondary,
     textTransform: 'uppercase',
+    marginTop: 2,
   },
   appointmentContent: {
     flex: 1,
+    justifyContent: 'center',
   },
   appointmentTitle: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontFamily: fonts.serif,
+    fontSize: 17,
     color: colors.text.primary,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   appointmentTime: {
     ...typography.bodySmall,
@@ -1171,7 +1177,7 @@ const styles = StyleSheet.create({
   appointmentActions: {
     justifyContent: 'center',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
     paddingLeft: spacing.sm,
   },
 
@@ -1206,8 +1212,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pastTitle: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontFamily: fonts.serif,
+    fontSize: 15,
     color: colors.text.primary,
   },
   pastDate: {
@@ -1225,22 +1231,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 14,
     borderBottomWidth: hairline,
     borderBottomColor: colors.border.light,
   },
   modalCancel: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.text.secondary,
   },
   modalTitle: {
-    ...typography.displaySmall,
+    fontFamily: fonts.serif,
+    fontSize: 18,
     color: colors.text.primary,
-    fontSize: 17,
-    lineHeight: 22,
   },
   modalSave: {
-    fontSize: 15,
+    ...typography.body,
     fontWeight: '600',
     color: colors.text.primary,
   },
@@ -1250,6 +1256,7 @@ const styles = StyleSheet.create({
   modalContent: {
     flex: 1,
     padding: spacing.lg,
+    paddingTop: spacing.xl,
   },
 
   // Form — underline-style inputs

@@ -55,13 +55,13 @@ export default function HomeScreen() {
   const { user, household } = useCurrentUser();
 
   // Undo toast state
-  const [undoToast, setUndoToast] = useState<{ shiftId: string; label: string } | null>(null);
+  const [undoToast, setUndoToast] = useState<{ type: ShiftType; label: string } | null>(null);
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showUndoToast = useCallback((shiftId: string, label: string) => {
+  const showUndoToast = useCallback((type: ShiftType, label: string) => {
     if (toastTimeout.current) clearTimeout(toastTimeout.current);
-    setUndoToast({ shiftId, label });
+    setUndoToast({ type, label });
     Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
     toastTimeout.current = setTimeout(() => {
       Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
@@ -111,12 +111,12 @@ export default function HomeScreen() {
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    const result = await logShift({
+    await logShift({
       type,
       clientDate: startOfDay.getTime(),
     });
 
-    showUndoToast(result as unknown as string, SHIFT_CONFIG[type].label);
+    showUndoToast(type, SHIFT_CONFIG[type].label);
   };
 
   const handleUndoShift = async (shiftId: NonNullable<typeof amShift>['_id']) => {
@@ -227,11 +227,6 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.dogName}>{household.dogName}'s Day</Text>
           </View>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatar}>
-              {household.dogName.charAt(0).toUpperCase()}
-            </Text>
-          </View>
         </View>
 
         {/* Today's Shifts */}
@@ -317,16 +312,15 @@ export default function HomeScreen() {
       {/* Undo Toast */}
       {undoToast && (
         <Animated.View style={[styles.toast, { opacity: toastOpacity }]}>
-          <Text style={styles.toastText}>Shift completed</Text>
+          <Text style={styles.toastText}>{undoToast.label} completed</Text>
           <TouchableOpacity
             onPress={() => {
-              const shift = undoToast.shiftId === 'am' ? amShift : pmShift;
-              // Find the most recently completed shift to undo
-              const shiftToUndo = amShift?.completed ? amShift : pmShift?.completed ? pmShift : null;
-              if (shiftToUndo) handleUndoShift(shiftToUndo._id);
+              const shift = undoToast.type === 'am' ? amShift : pmShift;
+              if (shift?.completed) handleUndoShift(shift._id);
             }}
             accessibilityLabel="Undo shift completion"
             accessibilityRole="button"
+            style={styles.toastUndoButton}
           >
             <Text style={styles.toastUndo}>Undo</Text>
           </TouchableOpacity>
@@ -391,22 +385,6 @@ const styles = StyleSheet.create({
     ...typography.displayLarge,
     color: colors.text.primary,
   },
-  avatarContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: hairline,
-    borderColor: colors.border.medium,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background.card,
-  },
-  avatar: {
-    fontFamily: fonts.serif,
-    fontSize: 26,
-    color: colors.text.primary,
-  },
-
   // Shifts Section
   shiftsSection: {
     gap: spacing.md,
@@ -418,6 +396,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     borderWidth: hairline,
     borderColor: colors.border.light,
+    ...shadows.sm,
   },
   shiftCardComplete: {
     borderLeftWidth: 3,
@@ -555,6 +534,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     borderWidth: hairline,
     borderColor: colors.border.light,
+    ...shadows.sm,
   },
   progressNumberContainer: {
     marginRight: spacing.lg,
@@ -602,6 +582,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border.light,
     borderLeftWidth: 3,
     borderLeftColor: colors.accent.warm,
+    ...shadows.sm,
   },
   appointmentContent: {
     flex: 1,
@@ -635,17 +616,22 @@ const styles = StyleSheet.create({
     left: spacing.lg,
     right: spacing.lg,
     backgroundColor: colors.text.primary,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    paddingVertical: 14,
     paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    ...shadows.lg,
+    shadowOpacity: 0.15,
   },
   toastText: {
-    ...typography.bodySmall,
+    ...typography.body,
     color: colors.text.inverse,
-    fontWeight: '500',
+  },
+  toastUndoButton: {
+    paddingVertical: spacing.xs,
+    paddingLeft: spacing.md,
   },
   toastUndo: {
     ...typography.button,
