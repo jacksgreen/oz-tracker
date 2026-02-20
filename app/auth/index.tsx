@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth, useSSO } from '@clerk/clerk-expo';
+import { useAuth, useSSO, useSignIn, useSignUp } from '@clerk/clerk-expo';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useCurrentUser, useStoreUser } from '../../context/AuthContext';
@@ -23,12 +23,14 @@ import { ProgressDots } from '../../components/ProgressDots';
 import * as Linking from 'expo-linking';
 import * as Clipboard from 'expo-clipboard';
 
-type AuthStep = 'welcome' | 'signin' | 'household-choice' | 'create-household' | 'join-household' | 'confirm-join';
+type AuthStep = 'welcome' | 'signin' | 'email-form' | 'email-verify' | 'household-choice' | 'create-household' | 'join-household' | 'confirm-join';
 
 export default function AuthScreen() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const { startSSOFlow } = useSSO();
+  const { signIn, setActive: setSignInActive, isLoaded: isSignInLoaded } = useSignIn();
+  const { signUp, setActive: setSignUpActive, isLoaded: isSignUpLoaded } = useSignUp();
   useStoreUser();
   const { user, household } = useCurrentUser();
 
@@ -43,6 +45,11 @@ export default function AuthScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<'oauth_google' | 'oauth_apple' | null>(null);
   const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isEmailSignUp, setIsEmailSignUp] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const lookedUpHousehold = useQuery(
     api.households.getByInviteCode,
@@ -81,6 +88,111 @@ export default function AuthScreen() {
       setLoadingProvider(null);
     }
   }, [startSSOFlow]);
+
+  const handleEmailSignIn = useCallback(async () => {
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter your email and password');
+      return;
+    }
+    if (!isSignInLoaded || !signIn) {
+      setError('Still loading. Please try again.');
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+    try {
+      const result = await signIn.create({
+        identifier: email.trim(),
+      });
+
+      if (result.status === 'needs_first_factor') {
+        const firstFactor = await signIn.attemptFirstFactor({
+          strategy: 'password',
+          password: password.trim(),
+        });
+        if (firstFactor.status === 'complete' && firstFactor.createdSessionId) {
+          await setSignInActive!({ session: firstFactor.createdSessionId });
+        } else {
+          setError('Sign in could not be completed. Please try again.');
+        }
+      } else if (result.status === 'complete' && result.createdSessionId) {
+        await setSignInActive!({ session: result.createdSessionId });
+      } else {
+        setError('Sign in could not be completed. Please try again.');
+      }
+    } catch (e: any) {
+      const msg = e?.errors?.[0]?.longMessage || e?.errors?.[0]?.message;
+      if (msg) {
+        setError(msg);
+      } else {
+        setError('Failed to sign in. Please check your credentials.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [email, password, signIn, setSignInActive, isSignInLoaded]);
+
+  const handleEmailSignUp = useCallback(async () => {
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter your email and password');
+      return;
+    }
+    if (!isSignUpLoaded || !signUp) {
+      setError('Still loading. Please try again.');
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+    try {
+      await signUp.create({
+        emailAddress: email.trim(),
+        password: password.trim(),
+      });
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      setStep('email-verify');
+    } catch (e: any) {
+      const msg = e?.errors?.[0]?.longMessage || e?.errors?.[0]?.message;
+      if (msg) {
+        setError(msg);
+      } else {
+        setError('Failed to create account. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [email, password, signUp, isSignUpLoaded]);
+
+  const handleVerifyEmail = useCallback(async () => {
+    if (!verificationCode.trim()) {
+      setError('Please enter the verification code');
+      return;
+    }
+    if (!isSignUpLoaded || !signUp) {
+      setError('Still loading. Please try again.');
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+    try {
+      const result = await signUp.attemptEmailAddressVerification({
+        code: verificationCode.trim(),
+      });
+      if (result.status === 'complete' && result.createdSessionId) {
+        await setSignUpActive!({ session: result.createdSessionId });
+      } else {
+        setError('Verification could not be completed. Please try again.');
+      }
+    } catch (e: any) {
+      const msg = e?.errors?.[0]?.longMessage || e?.errors?.[0]?.message;
+      if (msg) {
+        setError(msg);
+      } else {
+        setError('Invalid code. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [verificationCode, signUp, setSignUpActive, isSignUpLoaded]);
 
   const handleCreateHousehold = async () => {
     if (!dogName.trim()) {
@@ -235,6 +347,172 @@ export default function AuthScreen() {
           <>
             <Ionicons name="logo-google" size={18} color={colors.text.primary} />
             <Text style={styles.secondaryButtonText}>CONTINUE WITH GOOGLE</Text>
+          </>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.secondaryButton, isLoading && styles.buttonDisabled]}
+        onPress={() => {
+          setError('');
+          setStep('email-form');
+        }}
+        disabled={isLoading}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="mail-outline" size={18} color={colors.text.primary} />
+        <Text style={styles.secondaryButtonText}>CONTINUE WITH EMAIL</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderEmailForm = () => (
+    <View style={styles.stepContainer}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => {
+          setStep('signin');
+          setError('');
+        }}
+      >
+        <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
+      </TouchableOpacity>
+
+      <Text style={styles.stepTitle}>
+        {isEmailSignUp ? 'Create Account' : 'Sign In'}
+      </Text>
+      <Text style={styles.stepSubtitle}>
+        {isEmailSignUp ? 'Enter your details to get started' : 'Enter your email and password'}
+      </Text>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>EMAIL</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="you@example.com"
+          placeholderTextColor={colors.text.muted}
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          editable={!isLoading}
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>PASSWORD</Text>
+        <View style={styles.passwordRow}>
+          <TextInput
+            style={[styles.input, styles.passwordInput]}
+            placeholder={isEmailSignUp ? 'Create a password' : 'Your password'}
+            placeholderTextColor={colors.text.muted}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoComplete={isEmailSignUp ? 'new-password' : 'current-password'}
+            textContentType={isEmailSignUp ? 'newPassword' : 'password'}
+            editable={!isLoading}
+          />
+          <TouchableOpacity
+            style={styles.passwordToggle}
+            onPress={() => setShowPassword(!showPassword)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={18}
+              color={colors.text.muted}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+        onPress={isEmailSignUp ? handleEmailSignUp : handleEmailSignIn}
+        disabled={isLoading}
+        activeOpacity={0.8}
+      >
+        {isLoading ? (
+          <ActivityIndicator color={colors.text.inverse} />
+        ) : (
+          <Text style={styles.primaryButtonText}>
+            {isEmailSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'}
+          </Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.toggleAuthMode}
+        onPress={() => {
+          setIsEmailSignUp(!isEmailSignUp);
+          setError('');
+        }}
+        activeOpacity={0.6}
+      >
+        <Text style={styles.toggleAuthText}>
+          {isEmailSignUp ? 'Already have an account? ' : "Don't have an account? "}
+          <Text style={styles.toggleAuthAction}>
+            {isEmailSignUp ? 'Sign in' : 'Create one'}
+          </Text>
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderEmailVerify = () => (
+    <View style={styles.stepContainer}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => {
+          setStep('email-form');
+          setVerificationCode('');
+          setError('');
+        }}
+      >
+        <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
+      </TouchableOpacity>
+
+      <Text style={styles.stepTitle}>Check Your Email</Text>
+      <Text style={styles.stepSubtitle}>
+        We sent a verification code to{'\n'}
+        <Text style={{ fontWeight: '500', color: colors.text.primary }}>{email}</Text>
+      </Text>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>VERIFICATION CODE</Text>
+        <TextInput
+          style={[styles.input, styles.codeInput]}
+          placeholder="••••••"
+          placeholderTextColor={colors.text.muted}
+          value={verificationCode}
+          onChangeText={setVerificationCode}
+          keyboardType="number-pad"
+          maxLength={6}
+          autoFocus
+          editable={!isLoading}
+        />
+      </View>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      <TouchableOpacity
+        style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+        onPress={handleVerifyEmail}
+        disabled={isLoading}
+        activeOpacity={0.8}
+      >
+        {isLoading ? (
+          <ActivityIndicator color={colors.text.inverse} />
+        ) : (
+          <>
+            <Text style={styles.primaryButtonText}>VERIFY</Text>
+            <Ionicons name="arrow-forward" size={18} color={colors.text.inverse} />
           </>
         )}
       </TouchableOpacity>
@@ -489,6 +767,8 @@ export default function AuthScreen() {
   const dotConfig: Record<AuthStep, number | null> = {
     'welcome': null,
     'signin': 0,
+    'email-form': 0,
+    'email-verify': 0,
     'household-choice': 1,
     'create-household': 2,
     'join-household': 2,
@@ -502,6 +782,10 @@ export default function AuthScreen() {
           return renderWelcome();
         case 'signin':
           return renderSignIn();
+        case 'email-form':
+          return renderEmailForm();
+        case 'email-verify':
+          return renderEmailVerify();
         case 'household-choice':
           return renderHouseholdChoice();
         case 'create-household':
@@ -663,6 +947,34 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+
+  // Password field
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+  },
+  passwordToggle: {
+    padding: spacing.sm,
+    marginBottom: -spacing.xs,
+  },
+
+  // Auth mode toggle
+  toggleAuthMode: {
+    alignItems: 'center',
+    marginTop: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  toggleAuthText: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+  },
+  toggleAuthAction: {
+    fontWeight: '500',
+    color: colors.text.primary,
   },
 
   // Choice cards
