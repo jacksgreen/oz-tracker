@@ -197,6 +197,13 @@ export default function HouseholdScreen() {
     setSavingName(true);
     setNameError('');
     try {
+      // Update Clerk so the name stays in sync on next app load.
+      // Clerk stores firstName/lastName separately and computes fullName
+      // (which maps to the JWT name field) as their concatenation.
+      const spaceIndex = trimmed.indexOf(' ');
+      const firstName = spaceIndex === -1 ? trimmed : trimmed.slice(0, spaceIndex);
+      const lastName = spaceIndex === -1 ? '' : trimmed.slice(spaceIndex + 1);
+      await clerk.user?.update({ firstName, lastName });
       await updateUser({ name: trimmed });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setNameModalVisible(false);
